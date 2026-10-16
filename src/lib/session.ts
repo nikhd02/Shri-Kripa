@@ -55,6 +55,9 @@ export async function requireAuth(
   allowedRoles?: Role[]
 ): Promise<NonNullable<IronSessionData['user']>> {
   if (process.env.TEST_AUTH_USER) {
+    if (process.env.TEST_AUTH_USER === 'UNAUTHENTICATED') {
+      throw new Error('Unauthorized: Authentication required.');
+    }
     try {
       const testUser = JSON.parse(process.env.TEST_AUTH_USER);
       if (allowedRoles && !allowedRoles.includes(testUser.role)) {
