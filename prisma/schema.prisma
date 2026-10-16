@@ -1,0 +1,321 @@
+// prisma/schema.prisma
+// Shree Kripa Family Restaurant & Banquet — Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth & Staff
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  MANAGER
+  STAFF
+  KITCHEN
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         Role       @default(STAFF)
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String   @db.VarChar(100)
+  entity    String   @db.VarChar(100)
+  entityId  String?
+  detail    String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Menu
+// ---------------------------------------------------------------------------
+
+model Category {
+  id           String     @id @default(cuid())
+  name         String     @db.VarChar(100)
+  slug         String     @unique @db.VarChar(100)
+  description  String?    @db.Text
+  imageUrl     String?
+  displayOrder Int        @default(0)
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  menuItems    MenuItem[]
+
+  @@map("categories")
+}
+
+model MenuItem {
+  id           String        @id @default(cuid())
+  categoryId   String
+  category     Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  name         String        @db.VarChar(200)
+  slug         String        @unique @db.VarChar(200)
+  description  String?       @db.Text
+  basePrice    Decimal       @db.Decimal(10, 2)
+  imageUrl     String?
+  isVeg        Boolean       @default(true)
+  isAvailable  Boolean       @default(true)
+  isPublished  Boolean       @default(false)
+  displayOrder Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  variants     MenuVariant[]
+  addOns       MenuAddOn[]
+  orderItems   OrderItem[]
+
+  @@index([categoryId])
+  @@index([isPublished, isAvailable])
+  @@map("menu_items")
+}
+
+model MenuVariant {
+  id            String   @id @default(cuid())
+  menuItemId    String
+  menuItem      MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  name          String   @db.VarChar(100)
+  priceModifier Decimal  @db.Decimal(10, 2) @default(0)
+  isDefault     Boolean  @default(false)
+  isAvailable   Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([menuItemId])
+  @@map("menu_variants")
+}
+
+model MenuAddOn {
+  id          String   @id @default(cuid())
+  menuItemId  String
+  menuItem    MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  name        String   @db.VarChar(100)
+  price       Decimal  @db.Decimal(10, 2)
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([menuItemId])
+  @@map("menu_add_ons")
+}
+
+// ---------------------------------------------------------------------------
+// Tables
+// ---------------------------------------------------------------------------
+
+model RestaurantTable {
+  id          String   @id @default(cuid())
+  tableNumber String   @unique @db.VarChar(20)
+  capacity    Int
+  qrToken     String   @unique @default(cuid())
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  orders      Order[]
+
+  @@map("restaurant_tables")
+}
+
+// ---------------------------------------------------------------------------
+// Orders
+// ---------------------------------------------------------------------------
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderSource {
+  DINE_IN
+  WEBSITE
+  PHONE
+}
+
+model Order {
+  id             String          @id @default(cuid())
+  orderNumber    String          @unique
+  tableId        String?
+  table          RestaurantTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  customerId     String?
+  customer       Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  status         OrderStatus     @default(PENDING)
+  source         OrderSource     @default(DINE_IN)
+  customerName   String?         @db.VarChar(100)
+  customerPhone  String?         @db.VarChar(20)
+  notes          String?         @db.Text
+  subtotal       Decimal         @db.Decimal(10, 2)
+  taxAmount      Decimal         @db.Decimal(10, 2) @default(0)
+  total          Decimal         @db.Decimal(10, 2)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  orderItems     OrderItem[]
+  paymentRecords PaymentRecord[]
+
+  @@index([status])
+  @@index([tableId])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                   String             @id @default(cuid())
+  orderId              String
+  order                Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId           String
+  menuItem             MenuItem           @relation(fields: [menuItemId], references: [id], onDelete: Restrict)
+  menuItemName         String             @db.VarChar(200)   // price snapshot
+  variantName          String?            @db.VarChar(100)
+  quantity             Int
+  unitPrice            Decimal            @db.Decimal(10, 2) // price snapshot at order time
+  lineTotal            Decimal            @db.Decimal(10, 2)
+  specialInstructions  String?            @db.Text
+  createdAt            DateTime           @default(now())
+  addOns               OrderItemAddOn[]
+
+  @@index([orderId])
+  @@index([menuItemId])
+  @@map("order_items")
+}
+
+model OrderItemAddOn {
+  id          String    @id @default(cuid())
+  orderItemId String
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  addOnName   String    @db.VarChar(100) // snapshot
+  price       Decimal   @db.Decimal(10, 2)
+  createdAt   DateTime  @default(now())
+
+  @@index([orderItemId])
+  @@map("order_item_add_ons")
+}
+
+// ---------------------------------------------------------------------------
+// Payments
+// ---------------------------------------------------------------------------
+
+enum PaymentMethod {
+  CASH
+  UPI_MANUAL
+  CARD
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model PaymentRecord {
+  id        String        @id @default(cuid())
+  orderId   String
+  order     Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  method    PaymentMethod
+  amount    Decimal       @db.Decimal(10, 2)
+  status    PaymentStatus @default(PENDING)
+  reference String?       @db.VarChar(200)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([orderId])
+  @@map("payment_records")
+}
+
+// ---------------------------------------------------------------------------
+// Customers (optional, for tracking repeat customers)
+// ---------------------------------------------------------------------------
+
+model Customer {
+  id        String   @id @default(cuid())
+  phone     String   @unique @db.VarChar(20)
+  name      String?  @db.VarChar(100)
+  email     String?  @db.VarChar(200)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+
+  @@map("customers")
+}
+
+// ---------------------------------------------------------------------------
+// Banquet Enquiries
+// ---------------------------------------------------------------------------
+
+enum EnquiryStatus {
+  NEW
+  CONTACTED
+  CONFIRMED
+  CLOSED
+}
+
+model BanquetEnquiry {
+  id         String        @id @default(cuid())
+  name       String        @db.VarChar(100)
+  phone      String        @db.VarChar(20)
+  email      String?       @db.VarChar(200)
+  eventType  String        @db.VarChar(100)
+  eventDate  DateTime
+  guestCount Int
+  message    String?       @db.Text
+  status     EnquiryStatus @default(NEW)
+  notes      String?       @db.Text  // internal staff notes
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([status])
+  @@index([eventDate])
+  @@map("banquet_enquiries")
+}
+
+// ---------------------------------------------------------------------------
+// Restaurant Settings (single row — tax, timezone, display preferences)
+// ---------------------------------------------------------------------------
+
+model RestaurantSettings {
+  id              String   @id @default(cuid())
+  restaurantName  String   @db.VarChar(200)
+  // Tax: admin sets the applicable GST / SGST rate. Default 0.
+  taxRate         Decimal  @db.Decimal(5, 2) @default(0)
+  taxLabel        String   @db.VarChar(20)   @default("GST")
+  currency        String   @db.VarChar(10)   @default("INR")
+  timezone        String   @db.VarChar(60)   @default("Asia/Kolkata")
+  // Opening hours (JSON blob edited via admin panel)
+  openingHours    String?  @db.Text
+  // Address & contact (redundant with env, but editable by admin)
+  address         String?  @db.Text
+  phone1          String?  @db.VarChar(20)
+  phone2          String?  @db.VarChar(20)
+  googleMapsUrl   String?  @db.VarChar(500)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("restaurant_settings")
+}
+
