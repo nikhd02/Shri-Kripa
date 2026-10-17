@@ -75,8 +75,8 @@ export const getCachedPublicMenuCategories = unstable_cache(
         })),
       }));
     } catch (error) {
-      console.error('[getCachedPublicMenuCategories] Failed to query menu:', error);
-      return [];
+      console.error('[getCachedPublicMenuCategories] Failed to query menu from database:', error);
+      throw error;
     }
   },
   ['public-menu-categories-cache-key'],
