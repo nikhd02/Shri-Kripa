@@ -6,8 +6,11 @@
 import React from 'react';
 import type { Metadata } from 'next';
 import { Leaf, Phone, MapPin } from 'lucide-react';
-import { db } from '@/lib/db';
 import { verifyTableToken } from '@/server/actions/tables';
+import {
+  getCachedPublicMenuCategories,
+  getCachedRestaurantSettings,
+} from '@/server/queries/publicMenu';
 import { PublicMenuClient } from './PublicMenuClient';
 
 export const metadata: Metadata = {
@@ -37,70 +40,25 @@ export default async function PublicMenuPage(props: PublicMenuPageProps) {
   let isInvalidTableToken = false;
 
   if (rawTableToken) {
-    verifiedTable = await verifyTableToken(rawTableToken);
-    if (!verifiedTable) {
+    try {
+      verifiedTable = await verifyTableToken(rawTableToken);
+      if (!verifiedTable) {
+        isInvalidTableToken = true;
+      }
+    } catch (err) {
+      console.error('[PublicMenuPage] Error verifying table token:', err);
       isInvalidTableToken = true;
     }
   }
 
-  // Fetch restaurant settings for tax calculations
-  const settings = await db.restaurantSettings.findFirst();
-  const taxRate = settings?.taxRate ? Number(settings.taxRate) : 0;
-  const taxLabel = settings?.taxLabel || 'GST';
+  // Fetch cached settings and menu categories in parallel
+  const [settings, serializedCategories] = await Promise.all([
+    getCachedRestaurantSettings(),
+    getCachedPublicMenuCategories(),
+  ]);
 
-  // Fetch only ACTIVE categories and only PUBLISHED items within them
-  const activeCategories = await db.category.findMany({
-    where: { active: true },
-    orderBy: { displayOrder: 'asc' },
-    include: {
-      menuItems: {
-        where: { isPublished: true },
-        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
-        include: {
-          variants: {
-            where: { isAvailable: true },
-            orderBy: { createdAt: 'asc' },
-          },
-          addOns: {
-            where: { isAvailable: true },
-            orderBy: { createdAt: 'asc' },
-          },
-        },
-      },
-    },
-  });
-
-  // Serialize Decimals for Client Component
-  const serializedCategories = activeCategories.map((cat) => ({
-    id: cat.id,
-    name: cat.name,
-    slug: cat.slug,
-    description: cat.description,
-    items: cat.menuItems.map((item) => ({
-      id: item.id,
-      name: item.name,
-      slug: item.slug,
-      description: item.description,
-      basePrice: item.basePrice.toString(),
-      imageUrl: item.imageUrl,
-      isVeg: item.isVeg,
-      isAvailable: item.isAvailable,
-      displayOrder: item.displayOrder,
-      variants: item.variants.map((v) => ({
-        id: v.id,
-        name: v.name,
-        priceModifier: v.priceModifier.toString(),
-        isDefault: v.isDefault,
-        isAvailable: v.isAvailable,
-      })),
-      addOns: item.addOns.map((a) => ({
-        id: a.id,
-        name: a.name,
-        price: a.price.toString(),
-        isAvailable: a.isAvailable,
-      })),
-    })),
-  }));
+  const taxRate = settings.taxRate;
+  const taxLabel = settings.taxLabel;
 
   return (
     <div className="min-h-screen bg-[#FFFDF9] pb-32">
