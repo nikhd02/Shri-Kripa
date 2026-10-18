@@ -64,12 +64,8 @@ export default async function PublicMenuPage(props: PublicMenuPageProps) {
   let dbErrorMessage: string | null = null;
 
   try {
-    const [fetchedSettings, fetchedCategories] = await Promise.all([
-      getCachedRestaurantSettings(),
-      getCachedPublicMenuCategories(),
-    ]);
-    settings = fetchedSettings;
-    serializedCategories = fetchedCategories;
+    settings = await getCachedRestaurantSettings();
+    serializedCategories = await getCachedPublicMenuCategories();
   } catch (err: unknown) {
     dbErrorMessage = err instanceof Error ? err.message : String(err);
     console.error('[PublicMenuPage] Database query error:', dbErrorMessage);
@@ -137,12 +133,12 @@ export default async function PublicMenuPage(props: PublicMenuPageProps) {
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
               Database Connection Notice
             </div>
-            <p className="text-xs sm:text-sm text-amber-800 leading-relaxed">
-              Unable to connect to the database from Vercel:
+            <p className="text-xs sm:text-sm text-amber-800 leading-relaxed font-mono bg-amber-100/70 p-2.5 rounded-lg break-all">
+              {dbErrorMessage}
             </p>
             <ul className="text-xs list-disc list-inside space-y-1 text-amber-900 font-medium">
               <li>
-                <strong>Vercel Environment Variables:</strong> Ensure <code className="bg-amber-100 px-1 py-0.5 rounded">DATABASE_URL</code> is added in Vercel Project Settings &gt; Environment Variables.
+                <strong>Vercel Region:</strong> Configured to Mumbai (<code className="bg-amber-100 px-1 py-0.5 rounded">bom1</code>) in <code className="bg-amber-100 px-1 py-0.5 rounded">vercel.json</code>.
               </li>
               <li>
                 <strong>cPanel Remote MySQL:</strong> In your cPanel hosting under <em>Remote MySQL</em>, add <code className="bg-amber-100 px-1 py-0.5 rounded">%</code> to allow Vercel&apos;s dynamic serverless IPs.

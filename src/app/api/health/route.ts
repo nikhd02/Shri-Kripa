@@ -47,13 +47,34 @@ export async function GET() {
       db.category.count(),
       db.menuItem.count(),
     ]);
-    const durationMs = Date.now() - start;
+    const countsDurationMs = Date.now() - start;
+
+    let menuError: string | null = null;
+    let menuCategoriesCount = 0;
+    let totalItemsFetched = 0;
+    const menuStart = Date.now();
+
+    try {
+      const { getCachedPublicMenuCategories } = await import('@/server/queries/publicMenu');
+      const cats = await getCachedPublicMenuCategories();
+      menuCategoriesCount = cats.length;
+      totalItemsFetched = cats.reduce((acc, c) => acc + c.items.length, 0);
+    } catch (e: unknown) {
+      menuError = e instanceof Error ? e.message : String(e);
+    }
+    const menuDurationMs = Date.now() - menuStart;
 
     return NextResponse.json({
-      status: 'ok',
-      durationMs,
+      status: menuError ? 'partial_error' : 'ok',
+      countsDurationMs,
       categoriesCount,
       itemsCount,
+      menuTest: {
+        menuCategoriesCount,
+        totalItemsFetched,
+        menuDurationMs,
+        menuError,
+      },
       diagnostics,
     });
   } catch (error: unknown) {
