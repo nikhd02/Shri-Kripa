@@ -1,0 +1,838 @@
+{
+  "Salad & Papad": [
+    {
+      "id": "cmvcw96bt0002hpn4r8ag475n",
+      "name": "Green Salad",
+      "slug": "green-salad",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcw970c0004hpn4wgqwb7fi",
+      "name": "Papad Dry",
+      "slug": "papad-dry",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcw97c20006hpn4vm6pxao4",
+      "name": "Papad Fry",
+      "slug": "papad-fry",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcw97pv0008hpn4b05r2xiw",
+      "name": "Papad Masala",
+      "slug": "papad-masala",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcw9cs9000ahpn42lex6gg4",
+      "name": "Raita (Bondi/Veg.)",
+      "slug": "raita-bondi-veg",
+      "imageUrl": null
+    }
+  ],
+  "Rice & Veg.": [
+    {
+      "id": "cmvcw9gon000hhpn4qjp9ek9t",
+      "name": "Steam Rice",
+      "slug": "steam-rice",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcw9h5e000jhpn4h0vs0fpp",
+      "name": "Jeera Rice",
+      "slug": "jeera-rice",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcw9hys000lhpn428cfgq0m",
+      "name": "Peach Pulao",
+      "slug": "peach-pulao",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcw9ibt000nhpn4qnv9pjtv",
+      "name": "Veg Pulao",
+      "slug": "veg-pulao",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcw9ism000phpn491vwhayg",
+      "name": "Cheese Pulao",
+      "slug": "cheese-pulao",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcw9mk9000rhpn4p8y3vtn1",
+      "name": "Veg. Biryani",
+      "slug": "veg-biryani",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcw9piz000thpn4ql7sxkdn",
+      "name": "Paneer Biryani",
+      "slug": "paneer-biryani",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcw9tee000vhpn4ic18cxwl",
+      "name": "Kashmiri Pulao",
+      "slug": "kashmiri-pulao",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwa653000xhpn4fo5g94ax",
+      "name": "Shahi Pulao",
+      "slug": "shahi-pulao",
+      "imageUrl": null
+    }
+  ],
+  "Indian Bread": [
+    {
+      "id": "cmvcwa6vb0010hpn4543r7n4b",
+      "name": "Roti",
+      "slug": "roti",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwa75t0012hpn4v7iw6pn6",
+      "name": "Butter Roti",
+      "slug": "butter-roti",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwa7lw0014hpn4lidjqf69",
+      "name": "Plain Naan",
+      "slug": "plain-naan",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwa7wb0016hpn4zfi7f9ym",
+      "name": "Butter Naan",
+      "slug": "butter-naan",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwa86p0018hpn4ewpxmd3d",
+      "name": "Lachha Paratha",
+      "slug": "lachha-paratha",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwa8hr001ahpn4u0bzodew",
+      "name": "Stuff Naan",
+      "slug": "stuff-naan",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwa8tv001chpn4bd8iq7or",
+      "name": "Stuff Kulcha",
+      "slug": "stuff-kulcha",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwa94a001ehpn4itv7bz5l",
+      "name": "Garlic Naan",
+      "slug": "garlic-naan",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwa9e2001ghpn497krolss",
+      "name": "Kashmiri Naan",
+      "slug": "kashmiri-naan",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwa9s3001ihpn4wa4qfxxc",
+      "name": "Paneer Kulcha",
+      "slug": "paneer-kulcha",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwadb8001khpn47vcodb9s",
+      "name": "Tawa Roti (Butter)",
+      "slug": "tawa-roti-butter",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwaht1001mhpn47xqwthpd",
+      "name": "Tawa Paratha",
+      "slug": "tawa-paratha",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwai7u001ohpn43wwx133b",
+      "name": "Aloo Paratha (With Curd), 2 pc",
+      "slug": "aloo-paratha-with-curd-2-pc",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwaik2001qhpn4hrf177kh",
+      "name": "Paneer Paratha (With Curd), 2 pc",
+      "slug": "paneer-paratha-with-curd-2-pc",
+      "imageUrl": null
+    }
+  ],
+  "Dosa": [
+    {
+      "id": "cmvcwajmr001thpn4h3i1rlsy",
+      "name": "Masala Dosa",
+      "slug": "masala-dosa",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwak39001vhpn4g88szffj",
+      "name": "Paper Dosa",
+      "slug": "paper-dosa",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwakkg001xhpn40jg8s4pg",
+      "name": "Paneer Dosa",
+      "slug": "paneer-dosa",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwakvf001zhpn4orvf30r9",
+      "name": "Special Dosa",
+      "slug": "special-dosa",
+      "imageUrl": null
+    }
+  ],
+  "Main Course Veg.": [
+    {
+      "id": "cmvcwalmn0022hpn4tsp0kkxo",
+      "name": "Aloo Jira",
+      "slug": "aloo-jira",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwalw90024hpn49yivj9yj",
+      "name": "Paneer Kadhai",
+      "slug": "paneer-kadhai",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwam7e0026hpn41ecrddc8",
+      "name": "Shahi Paneer (Sweet)",
+      "slug": "shahi-paneer-sweet",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwamhc0028hpn490zgmcmr",
+      "name": "Shahi Kaju Paneer",
+      "slug": "shahi-kaju-paneer",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwamvn002ahpn4t2gxq63r",
+      "name": "Kaju Curry",
+      "slug": "kaju-curry",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwan6h002chpn43m371gof",
+      "name": "Paneer Do Pyaza",
+      "slug": "paneer-do-pyaza",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvbfwjxa0001id07tnerpzwy",
+      "name": "Paneer Butter Masala",
+      "slug": "paneer-butter-masala",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwb0b4002ehpn4dqtuqivy",
+      "name": "Paneer Tikka Masala",
+      "slug": "paneer-tikka-masala",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwb128002ghpn4lqrvx8vs",
+      "name": "Paneer Tikka Lavabdaar",
+      "slug": "paneer-tikka-lavabdaar",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwb1dv002ihpn4kw6ismrh",
+      "name": "Paneer Handi",
+      "slug": "paneer-handi",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwb1zt002khpn4nsxusl5m",
+      "name": "Aloo Dum Banarasi",
+      "slug": "aloo-dum-banarasi",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwb3ol002mhpn49jsxv5i5",
+      "name": "Mushroom Masala",
+      "slug": "mushroom-masala",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwb6pf002ohpn4yr7hy4pk",
+      "name": "Mushroom Do Pyaza",
+      "slug": "mushroom-do-pyaza",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwb9mw002qhpn40hs57l4x",
+      "name": "Paneer Mushroom",
+      "slug": "paneer-mushroom",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwb9yi002shpn40whaddjr",
+      "name": "Matar Mushroom",
+      "slug": "matar-mushroom",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbadk002uhpn4yzev7iwx",
+      "name": "Matar Paneer",
+      "slug": "matar-paneer",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbat4002whpn47fs27q8n",
+      "name": "Palak Paneer",
+      "slug": "palak-paneer",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbb55002yhpn4o7sfonjf",
+      "name": "Malai Kofta (Sweet)",
+      "slug": "malai-kofta-sweet",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbbma0030hpn4h1mawh6f",
+      "name": "Veg. Kofta",
+      "slug": "veg-kofta",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbc0j0032hpn4ohsl5tzk",
+      "name": "Paneer Kofta",
+      "slug": "paneer-kofta",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbccy0034hpn4hm90buyq",
+      "name": "Paneer Methi Malai",
+      "slug": "paneer-methi-malai",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbcrw0036hpn47bru9p2q",
+      "name": "Paneer Pasanda",
+      "slug": "paneer-pasanda",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbd360038hpn4a3bqkhgu",
+      "name": "Navratan Korma",
+      "slug": "navratan-korma",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbed6003ahpn4iaqqr3ld",
+      "name": "Mix Veg. (Dry)",
+      "slug": "mix-veg-dry",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbf4h003chpn4wp61lopj",
+      "name": "Veg Jhalfrezi (Dry)",
+      "slug": "veg-jhalfrezi-dry",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbfyc003ehpn4uiu7tsav",
+      "name": "Mushroom Jhalfrezi",
+      "slug": "mushroom-jhalfrezi",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbgrj003ghpn4xgo1pavm",
+      "name": "Paneer Jhalfrezi (Dry)",
+      "slug": "paneer-jhalfrezi-dry",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbhfu003ihpn4r21jc6ku",
+      "name": "Dal Fry",
+      "slug": "dal-fry",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbin4003khpn455qf5r30",
+      "name": "Dal Tadka",
+      "slug": "dal-tadka",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbji0003mhpn4hcw69067",
+      "name": "Dal Makhani",
+      "slug": "dal-makhani",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbke6003ohpn41p31x070",
+      "name": "Paneer Lababdar",
+      "slug": "paneer-lababdar",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbln4003qhpn47mged8y7",
+      "name": "Paneer Bhujia",
+      "slug": "paneer-bhujia",
+      "imageUrl": null
+    }
+  ],
+  "Veg. Soup": [
+    {
+      "id": "cmvcwbmxl003thpn4lcdma7t3",
+      "name": "Tomato Soup",
+      "slug": "tomato-soup",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbnf0003vhpn4s679o13f",
+      "name": "Veg. Hot & Sour Soup",
+      "slug": "veg-hot-sour-soup",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbnrl003xhpn4ypddyf4z",
+      "name": "Veg. Clear Soup",
+      "slug": "veg-clear-soup",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbo3l003zhpn4qxe4fl9d",
+      "name": "Veg. Manchow Soup",
+      "slug": "veg-manchow-soup",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbolw0041hpn42kielgjk",
+      "name": "Lemon Coriander Soup",
+      "slug": "lemon-coriander-soup",
+      "imageUrl": null
+    }
+  ],
+  "Starters": [
+    {
+      "id": "cmvcwbpp00043hpn4kqam59fl",
+      "name": "Onion Pakoda",
+      "slug": "onion-pakoda",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbpzu0045hpn44471bkr9",
+      "name": "Veg. Pakoda",
+      "slug": "veg-pakoda",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbqbe0047hpn48wui0wkq",
+      "name": "Paneer Pakoda",
+      "slug": "paneer-pakoda",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbqq90049hpn4u07kl1c4",
+      "name": "Finger Chips",
+      "slug": "finger-chips",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbr2u004bhpn4ffzmuamo",
+      "name": "Paneer Chilly (Dry/Gravy)",
+      "slug": "paneer-chilly-dry-gravy",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbs4q004hhpn40nrkugko",
+      "name": "Mashroom Chilly (Dry/Gravy)",
+      "slug": "mashroom-chilly-dry-gravy",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbuxw004nhpn4ga6don5i",
+      "name": "Baby Corn Crispy",
+      "slug": "baby-corn-crispy",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbvvd004phpn491fizihd",
+      "name": "Paneer 65",
+      "slug": "paneer-65",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbwm0004rhpn4bswuacjs",
+      "name": "Veg. Seekh Kabab",
+      "slug": "veg-seekh-kabab",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbxru004thpn4ufoxm4ot",
+      "name": "Harabhara Kabab",
+      "slug": "harabhara-kabab",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbyag004vhpn4eqait8fl",
+      "name": "Bhutta Kabab",
+      "slug": "bhutta-kabab",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbylo004xhpn45yemynkg",
+      "name": "American Chop suey",
+      "slug": "american-chop-suey",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbyxu004zhpn4neps0sil",
+      "name": "Masala Finger Chips",
+      "slug": "masala-finger-chips",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbzdn0051hpn4z71dp8yj",
+      "name": "Corn Cheese Balls",
+      "slug": "corn-cheese-balls",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbzo60053hpn4r2p5svnh",
+      "name": "Corn Tikka",
+      "slug": "corn-tikka",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwbzzn0055hpn48rbb9azh",
+      "name": "Baby Corn Chilly",
+      "slug": "baby-corn-chilly",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwc0ob0057hpn4do9vt4x9",
+      "name": "Garlic Paneer",
+      "slug": "garlic-paneer",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwc14q0059hpn4oyu1v2rs",
+      "name": "Paneer Adraki",
+      "slug": "paneer-adraki",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwc1jj005bhpn4mjxov41g",
+      "name": "Veg. Soya Achari Tikka",
+      "slug": "veg-soya-achari-tikka",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwc275005dhpn4liqal6kz",
+      "name": "Paneer Paper Tikka",
+      "slug": "paneer-paper-tikka",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwc51p005fhpn439phkokg",
+      "name": "Paneer Tikka",
+      "slug": "paneer-tikka",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwc5x5005hhpn4gtejft9k",
+      "name": "Paneer Hariyali Tikka",
+      "slug": "paneer-hariyali-tikka",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwc6ap005jhpn4mwdrb2a9",
+      "name": "Paneer Malai Tikka",
+      "slug": "paneer-malai-tikka",
+      "imageUrl": null
+    }
+  ],
+  "Pizza & Pasta": [
+    {
+      "id": "cmvcwc780005mhpn443xjeapd",
+      "name": "Veg. Cheese Pizza",
+      "slug": "veg-cheese-pizza",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwc8bs005ohpn4r66odcim",
+      "name": "Paneer Makhani Cheese Pizza",
+      "slug": "paneer-makhani-cheese-pizza",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwc8rv005qhpn4mbkmpe1i",
+      "name": "Shree Kripa Special Cheese Pizza",
+      "slug": "shree-kripa-special-cheese-pizza",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwc9ef005shpn4ui0mm93t",
+      "name": "Farm Paradise Pizza",
+      "slug": "farm-paradise-pizza",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwc9tk005uhpn4uq8cpafi",
+      "name": "Cheese Macroni",
+      "slug": "cheese-macroni",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcaib005whpn43ar4ynfo",
+      "name": "Veg. Macroni",
+      "slug": "veg-macroni",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcba9005yhpn4crfx9c6l",
+      "name": "Paneer Macroni",
+      "slug": "paneer-macroni",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcbpi0060hpn42d9huoth",
+      "name": "Red Sous Pasta",
+      "slug": "red-sous-pasta",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwccau0062hpn4y86e5ubl",
+      "name": "White Sous Pasta",
+      "slug": "white-sous-pasta",
+      "imageUrl": null
+    }
+  ],
+  "Burger": [
+    {
+      "id": "cmvcwce6x0065hpn4trnu5h87",
+      "name": "Burger",
+      "slug": "burger",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcetk0067hpn49rtndbxa",
+      "name": "Cheese Burger",
+      "slug": "cheese-burger",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcf6z0069hpn44nt2tayf",
+      "name": "Paneer Burger",
+      "slug": "paneer-burger",
+      "imageUrl": null
+    }
+  ],
+  "Chinese": [
+    {
+      "id": "cmvcwcg3g006chpn4nsbap0p8",
+      "name": "Veg. Roll",
+      "slug": "veg-roll",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcgp2006ehpn45ppzbz0q",
+      "name": "Veg. Paneer Roll",
+      "slug": "veg-paneer-roll",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwch3v006ghpn4v59yl06b",
+      "name": "Veg. Chowmein",
+      "slug": "veg-chowmein",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwchex006ihpn410wobbjz",
+      "name": "Paneer Chowmein",
+      "slug": "paneer-chowmein",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwchw4006khpn4oliiez88",
+      "name": "Mix Chowmein Veg",
+      "slug": "mix-chowmein-veg",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwci7g006mhpn4jx0x8k1e",
+      "name": "Veg. Schezwan Chowmein",
+      "slug": "veg-schezwan-chowmein",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcijo006ohpn4t30zv6o0",
+      "name": "Veg. Schezwan Rice",
+      "slug": "veg-schezwan-rice",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwciyh006qhpn4ebaukk44",
+      "name": "Veg. Fried Rice",
+      "slug": "veg-fried-rice",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcjae006shpn4dyrus3vr",
+      "name": "Mix Fried Rice",
+      "slug": "mix-fried-rice",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwck39006uhpn4ustdk8dh",
+      "name": "Veg. Chopsuey",
+      "slug": "veg-chopsuey",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwckmf006whpn40zb1fdkk",
+      "name": "Potato Chill (Dry)",
+      "slug": "potato-chill-dry",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcleu006yhpn452fpyp7j",
+      "name": "Veg. Manchurian",
+      "slug": "veg-manchurian",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcn590070hpn46cr4af88",
+      "name": "Paneer Manchurian",
+      "slug": "paneer-manchurian",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcngq0072hpn4ntvqflet",
+      "name": "Paneer Fried Rice",
+      "slug": "paneer-fried-rice",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcnsp0074hpn48t7o4sdw",
+      "name": "Spring Roll",
+      "slug": "spring-roll",
+      "imageUrl": null
+    }
+  ],
+  "Drinks & Beverages": [
+    {
+      "id": "cmvcwcoog0077hpn45c0ib8ts",
+      "name": "Tea",
+      "slug": "tea",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcphx0079hpn42q2nibgu",
+      "name": "Coffee",
+      "slug": "coffee",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcqh6007bhpn4i3toigyd",
+      "name": "Cold Coffee",
+      "slug": "cold-coffee",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcquq007dhpn4bewvlb5u",
+      "name": "Banana Shake",
+      "slug": "banana-shake",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcr9e007fhpn43o47ytlq",
+      "name": "Cold Drinks Glass",
+      "slug": "cold-drinks-glass",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcrs4007hhpn4zevqomk8",
+      "name": "Mineral Water",
+      "slug": "mineral-water",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcs9z007jhpn4rnkv5qj7",
+      "name": "Cold Drink Can",
+      "slug": "cold-drink-can",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcsy9007lhpn46wti5t3o",
+      "name": "Lassi",
+      "slug": "lassi",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwctnq007nhpn4bycl2kck",
+      "name": "Milk Shake",
+      "slug": "milk-shake",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcub6007phpn4l1glwppy",
+      "name": "Cold Coffee With Ice Cream",
+      "slug": "cold-coffee-with-ice-cream",
+      "imageUrl": null
+    }
+  ],
+  "Thali (Veg.)": [
+    {
+      "id": "cmvcwcv72007shpn4qbe3vkqm",
+      "name": "Normal Thali",
+      "slug": "normal-thali",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcvlz007uhpn4x7e9246g",
+      "name": "Kripa Special Thali",
+      "slug": "kripa-special-thali",
+      "imageUrl": null
+    }
+  ],
+  "Dessert": [
+    {
+      "id": "cmvcwcw9q007xhpn429ela1kd",
+      "name": "Sizzling Brownie",
+      "slug": "sizzling-brownie",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcwn2007zhpn4gvd7gcaz",
+      "name": "Gulab Jamun",
+      "slug": "gulab-jamun",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcx4s0081hpn4h81bg9jc",
+      "name": "Rasgulla",
+      "slug": "rasgulla",
+      "imageUrl": null
+    },
+    {
+      "id": "cmvcwcxhe0083hpn4qthngrjy",
+      "name": "Cham Cham",
+      "slug": "cham-cham",
+      "imageUrl": null
+    }
+  ]
+}

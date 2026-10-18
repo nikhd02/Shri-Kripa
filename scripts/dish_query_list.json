@@ -1,0 +1,677 @@
+[
+  {
+    "dish": "Green Salad",
+    "category": "Salad & Papad",
+    "searchTerm": "Indian Green Salad cucumber onion tomato"
+  },
+  {
+    "dish": "Papad Dry",
+    "category": "Salad & Papad",
+    "searchTerm": "Roasted Papad"
+  },
+  {
+    "dish": "Papad Fry",
+    "category": "Salad & Papad",
+    "searchTerm": "Fried Papad"
+  },
+  {
+    "dish": "Papad Masala",
+    "category": "Salad & Papad",
+    "searchTerm": "Masala Papad"
+  },
+  {
+    "dish": "Raita (Bondi/Veg.)",
+    "category": "Salad & Papad",
+    "searchTerm": "Boondi Raita"
+  },
+  {
+    "dish": "Steam Rice",
+    "category": "Rice & Veg.",
+    "searchTerm": "Steamed basmati rice"
+  },
+  {
+    "dish": "Jeera Rice",
+    "category": "Rice & Veg.",
+    "searchTerm": "Jeera Rice"
+  },
+  {
+    "dish": "Peach Pulao",
+    "category": "Rice & Veg.",
+    "searchTerm": "Matar Pulao peas"
+  },
+  {
+    "dish": "Veg Pulao",
+    "category": "Rice & Veg.",
+    "searchTerm": "Vegetable Pulao"
+  },
+  {
+    "dish": "Cheese Pulao",
+    "category": "Rice & Veg.",
+    "searchTerm": "Paneer Pulao"
+  },
+  {
+    "dish": "Veg. Biryani",
+    "category": "Rice & Veg.",
+    "searchTerm": "Vegetable Biryani"
+  },
+  {
+    "dish": "Paneer Biryani",
+    "category": "Rice & Veg.",
+    "searchTerm": "Paneer Biryani"
+  },
+  {
+    "dish": "Kashmiri Pulao",
+    "category": "Rice & Veg.",
+    "searchTerm": "Kashmiri Pulao"
+  },
+  {
+    "dish": "Shahi Pulao",
+    "category": "Rice & Veg.",
+    "searchTerm": "Shahi Pulao"
+  },
+  {
+    "dish": "Roti",
+    "category": "Indian Bread",
+    "searchTerm": "Tandoori Roti"
+  },
+  {
+    "dish": "Butter Roti",
+    "category": "Indian Bread",
+    "searchTerm": "Butter Roti"
+  },
+  {
+    "dish": "Plain Naan",
+    "category": "Indian Bread",
+    "searchTerm": "Plain Naan"
+  },
+  {
+    "dish": "Butter Naan",
+    "category": "Indian Bread",
+    "searchTerm": "Butter Naan"
+  },
+  {
+    "dish": "Lachha Paratha",
+    "category": "Indian Bread",
+    "searchTerm": "Lachha Paratha"
+  },
+  {
+    "dish": "Stuff Naan",
+    "category": "Indian Bread",
+    "searchTerm": "Stuffed Naan"
+  },
+  {
+    "dish": "Stuff Kulcha",
+    "category": "Indian Bread",
+    "searchTerm": "Amritsari Kulcha"
+  },
+  {
+    "dish": "Garlic Naan",
+    "category": "Indian Bread",
+    "searchTerm": "Garlic Naan"
+  },
+  {
+    "dish": "Kashmiri Naan",
+    "category": "Indian Bread",
+    "searchTerm": "Kashmiri Naan"
+  },
+  {
+    "dish": "Paneer Kulcha",
+    "category": "Indian Bread",
+    "searchTerm": "Paneer Kulcha"
+  },
+  {
+    "dish": "Tawa Roti (Butter)",
+    "category": "Indian Bread",
+    "searchTerm": "Tawa Roti"
+  },
+  {
+    "dish": "Tawa Paratha",
+    "category": "Indian Bread",
+    "searchTerm": "Tawa Paratha"
+  },
+  {
+    "dish": "Aloo Paratha (With Curd), 2 pc",
+    "category": "Indian Bread",
+    "searchTerm": "Aloo Paratha"
+  },
+  {
+    "dish": "Paneer Paratha (With Curd), 2 pc",
+    "category": "Indian Bread",
+    "searchTerm": "Paneer Paratha"
+  },
+  {
+    "dish": "Masala Dosa",
+    "category": "Dosa",
+    "searchTerm": "Masala Dosa"
+  },
+  {
+    "dish": "Paper Dosa",
+    "category": "Dosa",
+    "searchTerm": "Paper Dosa"
+  },
+  {
+    "dish": "Paneer Dosa",
+    "category": "Dosa",
+    "searchTerm": "Paneer Dosa"
+  },
+  {
+    "dish": "Special Dosa",
+    "category": "Dosa",
+    "searchTerm": "Mysore Masala Dosa"
+  },
+  {
+    "dish": "Aloo Jira",
+    "category": "Main Course Veg.",
+    "searchTerm": "Jeera Aloo"
+  },
+  {
+    "dish": "Paneer Kadhai",
+    "category": "Main Course Veg.",
+    "searchTerm": "Kadai Paneer"
+  },
+  {
+    "dish": "Shahi Paneer (Sweet)",
+    "category": "Main Course Veg.",
+    "searchTerm": "Shahi Paneer"
+  },
+  {
+    "dish": "Shahi Kaju Paneer",
+    "category": "Main Course Veg.",
+    "searchTerm": "Kaju Paneer"
+  },
+  {
+    "dish": "Kaju Curry",
+    "category": "Main Course Veg.",
+    "searchTerm": "Kaju Curry"
+  },
+  {
+    "dish": "Paneer Do Pyaza",
+    "category": "Main Course Veg.",
+    "searchTerm": "Paneer Do Pyaza"
+  },
+  {
+    "dish": "Paneer Butter Masala",
+    "category": "Main Course Veg.",
+    "searchTerm": "Paneer Butter Masala"
+  },
+  {
+    "dish": "Paneer Tikka Masala",
+    "category": "Main Course Veg.",
+    "searchTerm": "Paneer Tikka Masala"
+  },
+  {
+    "dish": "Paneer Tikka Lavabdaar",
+    "category": "Main Course Veg.",
+    "searchTerm": "Paneer Lababdar"
+  },
+  {
+    "dish": "Paneer Handi",
+    "category": "Main Course Veg.",
+    "searchTerm": "Handi Paneer"
+  },
+  {
+    "dish": "Aloo Dum Banarasi",
+    "category": "Main Course Veg.",
+    "searchTerm": "Dum Aloo"
+  },
+  {
+    "dish": "Mushroom Masala",
+    "category": "Main Course Veg.",
+    "searchTerm": "Mushroom Masala"
+  },
+  {
+    "dish": "Mushroom Do Pyaza",
+    "category": "Main Course Veg.",
+    "searchTerm": "Mushroom Do Pyaza"
+  },
+  {
+    "dish": "Paneer Mushroom",
+    "category": "Main Course Veg.",
+    "searchTerm": "Paneer Mushroom Curry"
+  },
+  {
+    "dish": "Matar Mushroom",
+    "category": "Main Course Veg.",
+    "searchTerm": "Matar Mushroom"
+  },
+  {
+    "dish": "Matar Paneer",
+    "category": "Main Course Veg.",
+    "searchTerm": "Matar Paneer"
+  },
+  {
+    "dish": "Palak Paneer",
+    "category": "Main Course Veg.",
+    "searchTerm": "Palak Paneer"
+  },
+  {
+    "dish": "Malai Kofta (Sweet)",
+    "category": "Main Course Veg.",
+    "searchTerm": "Malai Kofta"
+  },
+  {
+    "dish": "Veg. Kofta",
+    "category": "Main Course Veg.",
+    "searchTerm": "Veg Kofta Curry"
+  },
+  {
+    "dish": "Paneer Kofta",
+    "category": "Main Course Veg.",
+    "searchTerm": "Paneer Kofta"
+  },
+  {
+    "dish": "Paneer Methi Malai",
+    "category": "Main Course Veg.",
+    "searchTerm": "Methi Malai Paneer"
+  },
+  {
+    "dish": "Paneer Pasanda",
+    "category": "Main Course Veg.",
+    "searchTerm": "Paneer Pasanda"
+  },
+  {
+    "dish": "Navratan Korma",
+    "category": "Main Course Veg.",
+    "searchTerm": "Navratan Korma"
+  },
+  {
+    "dish": "Mix Veg. (Dry)",
+    "category": "Main Course Veg.",
+    "searchTerm": "Mix Veg"
+  },
+  {
+    "dish": "Veg Jhalfrezi (Dry)",
+    "category": "Main Course Veg.",
+    "searchTerm": "Vegetable Jalfrezi"
+  },
+  {
+    "dish": "Mushroom Jhalfrezi",
+    "category": "Main Course Veg.",
+    "searchTerm": "Mushroom Jalfrezi"
+  },
+  {
+    "dish": "Paneer Jhalfrezi (Dry)",
+    "category": "Main Course Veg.",
+    "searchTerm": "Paneer Jalfrezi"
+  },
+  {
+    "dish": "Dal Fry",
+    "category": "Main Course Veg.",
+    "searchTerm": "Dal Fry"
+  },
+  {
+    "dish": "Dal Tadka",
+    "category": "Main Course Veg.",
+    "searchTerm": "Dal Tadka"
+  },
+  {
+    "dish": "Dal Makhani",
+    "category": "Main Course Veg.",
+    "searchTerm": "Dal Makhani"
+  },
+  {
+    "dish": "Paneer Lababdar",
+    "category": "Main Course Veg.",
+    "searchTerm": "Paneer Lababdar"
+  },
+  {
+    "dish": "Paneer Bhujia",
+    "category": "Main Course Veg.",
+    "searchTerm": "Paneer Bhurji"
+  },
+  {
+    "dish": "Tomato Soup",
+    "category": "Veg. Soup",
+    "searchTerm": "Tomato Soup"
+  },
+  {
+    "dish": "Veg. Hot & Sour Soup",
+    "category": "Veg. Soup",
+    "searchTerm": "Hot and Sour Soup"
+  },
+  {
+    "dish": "Veg. Clear Soup",
+    "category": "Veg. Soup",
+    "searchTerm": "Vegetable clear soup"
+  },
+  {
+    "dish": "Veg. Manchow Soup",
+    "category": "Veg. Soup",
+    "searchTerm": "Manchow Soup"
+  },
+  {
+    "dish": "Lemon Coriander Soup",
+    "category": "Veg. Soup",
+    "searchTerm": "Lemon Coriander Soup"
+  },
+  {
+    "dish": "Onion Pakoda",
+    "category": "Starters",
+    "searchTerm": "Onion Pakoda"
+  },
+  {
+    "dish": "Veg. Pakoda",
+    "category": "Starters",
+    "searchTerm": "Vegetable Pakora"
+  },
+  {
+    "dish": "Paneer Pakoda",
+    "category": "Starters",
+    "searchTerm": "Paneer Pakora"
+  },
+  {
+    "dish": "Finger Chips",
+    "category": "Starters",
+    "searchTerm": "French Fries"
+  },
+  {
+    "dish": "Paneer Chilly (Dry/Gravy)",
+    "category": "Starters",
+    "searchTerm": "Chilli Paneer"
+  },
+  {
+    "dish": "Mashroom Chilly (Dry/Gravy)",
+    "category": "Starters",
+    "searchTerm": "Chilli Mushroom"
+  },
+  {
+    "dish": "Baby Corn Crispy",
+    "category": "Starters",
+    "searchTerm": "Crispy Baby Corn"
+  },
+  {
+    "dish": "Paneer 65",
+    "category": "Starters",
+    "searchTerm": "Paneer 65"
+  },
+  {
+    "dish": "Veg. Seekh Kabab",
+    "category": "Starters",
+    "searchTerm": "Veg Seekh Kabab"
+  },
+  {
+    "dish": "Harabhara Kabab",
+    "category": "Starters",
+    "searchTerm": "Hara Bhara Kabab"
+  },
+  {
+    "dish": "Bhutta Kabab",
+    "category": "Starters",
+    "searchTerm": "Corn Kabab"
+  },
+  {
+    "dish": "American Chop suey",
+    "category": "Starters",
+    "searchTerm": "American Chopsuey"
+  },
+  {
+    "dish": "Masala Finger Chips",
+    "category": "Starters",
+    "searchTerm": "Masala French Fries"
+  },
+  {
+    "dish": "Corn Cheese Balls",
+    "category": "Starters",
+    "searchTerm": "Corn Cheese Balls"
+  },
+  {
+    "dish": "Corn Tikka",
+    "category": "Starters",
+    "searchTerm": "Corn Tikka"
+  },
+  {
+    "dish": "Baby Corn Chilly",
+    "category": "Starters",
+    "searchTerm": "Chilli Baby Corn"
+  },
+  {
+    "dish": "Garlic Paneer",
+    "category": "Starters",
+    "searchTerm": "Garlic Paneer"
+  },
+  {
+    "dish": "Paneer Adraki",
+    "category": "Starters",
+    "searchTerm": "Paneer Tikka"
+  },
+  {
+    "dish": "Veg. Soya Achari Tikka",
+    "category": "Starters",
+    "searchTerm": "Soya Chaap Tikka"
+  },
+  {
+    "dish": "Paneer Paper Tikka",
+    "category": "Starters",
+    "searchTerm": "Paneer Tikka"
+  },
+  {
+    "dish": "Paneer Tikka",
+    "category": "Starters",
+    "searchTerm": "Paneer Tikka"
+  },
+  {
+    "dish": "Paneer Hariyali Tikka",
+    "category": "Starters",
+    "searchTerm": "Hariyali Paneer Tikka"
+  },
+  {
+    "dish": "Paneer Malai Tikka",
+    "category": "Starters",
+    "searchTerm": "Malai Paneer Tikka"
+  },
+  {
+    "dish": "Veg. Cheese Pizza",
+    "category": "Pizza & Pasta",
+    "searchTerm": "Vegetarian Pizza"
+  },
+  {
+    "dish": "Paneer Makhani Cheese Pizza",
+    "category": "Pizza & Pasta",
+    "searchTerm": "Paneer Pizza"
+  },
+  {
+    "dish": "Shree Kripa Special Cheese Pizza",
+    "category": "Pizza & Pasta",
+    "searchTerm": "Cheese Pizza"
+  },
+  {
+    "dish": "Farm Paradise Pizza",
+    "category": "Pizza & Pasta",
+    "searchTerm": "Veggie Pizza"
+  },
+  {
+    "dish": "Cheese Macroni",
+    "category": "Pizza & Pasta",
+    "searchTerm": "Macaroni and Cheese"
+  },
+  {
+    "dish": "Veg. Macroni",
+    "category": "Pizza & Pasta",
+    "searchTerm": "Masala Macaroni"
+  },
+  {
+    "dish": "Paneer Macroni",
+    "category": "Pizza & Pasta",
+    "searchTerm": "Pasta Macaroni"
+  },
+  {
+    "dish": "Red Sous Pasta",
+    "category": "Pizza & Pasta",
+    "searchTerm": "Arrabbiata pasta penne"
+  },
+  {
+    "dish": "White Sous Pasta",
+    "category": "Pizza & Pasta",
+    "searchTerm": "Alfredo pasta penne"
+  },
+  {
+    "dish": "Burger",
+    "category": "Burger",
+    "searchTerm": "Veggie burger"
+  },
+  {
+    "dish": "Cheese Burger",
+    "category": "Burger",
+    "searchTerm": "Cheeseburger"
+  },
+  {
+    "dish": "Paneer Burger",
+    "category": "Burger",
+    "searchTerm": "Paneer burger"
+  },
+  {
+    "dish": "Veg. Roll",
+    "category": "Chinese",
+    "searchTerm": "Veg Kathi Roll"
+  },
+  {
+    "dish": "Veg. Paneer Roll",
+    "category": "Chinese",
+    "searchTerm": "Paneer Kathi Roll"
+  },
+  {
+    "dish": "Veg. Chowmein",
+    "category": "Chinese",
+    "searchTerm": "Veg Chowmein"
+  },
+  {
+    "dish": "Paneer Chowmein",
+    "category": "Chinese",
+    "searchTerm": "Paneer Noodles"
+  },
+  {
+    "dish": "Mix Chowmein Veg",
+    "category": "Chinese",
+    "searchTerm": "Hakka Noodles"
+  },
+  {
+    "dish": "Veg. Schezwan Chowmein",
+    "category": "Chinese",
+    "searchTerm": "Schezwan Noodles"
+  },
+  {
+    "dish": "Veg. Schezwan Rice",
+    "category": "Chinese",
+    "searchTerm": "Schezwan Fried Rice"
+  },
+  {
+    "dish": "Veg. Fried Rice",
+    "category": "Chinese",
+    "searchTerm": "Vegetable Fried Rice"
+  },
+  {
+    "dish": "Mix Fried Rice",
+    "category": "Chinese",
+    "searchTerm": "Fried Rice"
+  },
+  {
+    "dish": "Veg. Chopsuey",
+    "category": "Chinese",
+    "searchTerm": "Vegetable Chopsuey"
+  },
+  {
+    "dish": "Potato Chill (Dry)",
+    "category": "Chinese",
+    "searchTerm": "Chilli Potato"
+  },
+  {
+    "dish": "Veg. Manchurian",
+    "category": "Chinese",
+    "searchTerm": "Veg Manchurian"
+  },
+  {
+    "dish": "Paneer Manchurian",
+    "category": "Chinese",
+    "searchTerm": "Paneer Manchurian"
+  },
+  {
+    "dish": "Paneer Fried Rice",
+    "category": "Chinese",
+    "searchTerm": "Paneer Fried Rice"
+  },
+  {
+    "dish": "Spring Roll",
+    "category": "Chinese",
+    "searchTerm": "Spring Roll"
+  },
+  {
+    "dish": "Tea",
+    "category": "Drinks & Beverages",
+    "searchTerm": "Masala Chai"
+  },
+  {
+    "dish": "Coffee",
+    "category": "Drinks & Beverages",
+    "searchTerm": "Filter Coffee"
+  },
+  {
+    "dish": "Cold Coffee",
+    "category": "Drinks & Beverages",
+    "searchTerm": "Iced Coffee"
+  },
+  {
+    "dish": "Banana Shake",
+    "category": "Drinks & Beverages",
+    "searchTerm": "Banana Milkshake"
+  },
+  {
+    "dish": "Cold Drinks Glass",
+    "category": "Drinks & Beverages",
+    "searchTerm": "Cola glass ice"
+  },
+  {
+    "dish": "Mineral Water",
+    "category": "Drinks & Beverages",
+    "searchTerm": "Mineral water bottle"
+  },
+  {
+    "dish": "Cold Drink Can",
+    "category": "Drinks & Beverages",
+    "searchTerm": "Soft drink can"
+  },
+  {
+    "dish": "Lassi",
+    "category": "Drinks & Beverages",
+    "searchTerm": "Sweet Lassi"
+  },
+  {
+    "dish": "Milk Shake",
+    "category": "Drinks & Beverages",
+    "searchTerm": "Milkshake"
+  },
+  {
+    "dish": "Cold Coffee With Ice Cream",
+    "category": "Drinks & Beverages",
+    "searchTerm": "Cold Coffee ice cream"
+  },
+  {
+    "dish": "Normal Thali",
+    "category": "Thali (Veg.)",
+    "searchTerm": "Indian Thali"
+  },
+  {
+    "dish": "Kripa Special Thali",
+    "category": "Thali (Veg.)",
+    "searchTerm": "Royal Indian Thali"
+  },
+  {
+    "dish": "Sizzling Brownie",
+    "category": "Dessert",
+    "searchTerm": "Sizzling Brownie"
+  },
+  {
+    "dish": "Gulab Jamun",
+    "category": "Dessert",
+    "searchTerm": "Gulab Jamun"
+  },
+  {
+    "dish": "Rasgulla",
+    "category": "Dessert",
+    "searchTerm": "Rasgulla"
+  },
+  {
+    "dish": "Cham Cham",
+    "category": "Dessert",
+    "searchTerm": "Chomchom sweet"
+  }
+]

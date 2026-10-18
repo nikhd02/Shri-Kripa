@@ -81,3 +81,46 @@ export async function submitBanquetEnquiry(
     };
   }
 }
+
+/**
+ * Update banquet enquiry status (restricted to ADMIN, MANAGER, STAFF)
+ */
+export async function updateBanquetStatusAction(
+  id: string,
+  status: 'NEW' | 'CONTACTED' | 'CONFIRMED' | 'CLOSED',
+  notes?: string
+): Promise<{ success: boolean; error?: string }> {
+  const { requireAuth } = await import('@/lib/session');
+  const { Role } = await import('@prisma/client');
+  const { revalidatePath } = await import('next/cache');
+
+  const user = await requireAuth([Role.ADMIN, Role.MANAGER, Role.STAFF]);
+
+  try {
+    await db.banquetEnquiry.update({
+      where: { id },
+      data: {
+        status,
+        ...(notes !== undefined ? { notes } : {}),
+      },
+    });
+
+    await db.auditLog.create({
+      data: {
+        userId: user.id,
+        action: 'UPDATE_BANQUET_STATUS',
+        entity: 'BanquetEnquiry',
+        entityId: id,
+        detail: `Updated enquiry status to ${status}`,
+      },
+    });
+
+    revalidatePath('/dashboard/banquet');
+    revalidatePath('/dashboard/reports');
+    return { success: true };
+  } catch (err) {
+    console.error('Error updating banquet status:', err);
+    return { success: false, error: 'Failed to update banquet status.' };
+  }
+}
+

@@ -44,6 +44,35 @@ export const createUserSchema = z.object({
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 
+export const updateUserSchema = z.object({
+  id: z.string().min(1, 'User ID is required'),
+  name: z
+    .string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100)
+    .trim(),
+  email: z
+    .string()
+    .email('Please enter a valid email address')
+    .toLowerCase()
+    .trim(),
+  role: z.enum(['ADMIN', 'MANAGER', 'STAFF', 'KITCHEN']),
+  active: z.boolean().optional(),
+  password: z
+    .string()
+    .max(100)
+    .optional()
+    .or(z.literal(''))
+    .refine(
+      (val) => !val || (val.length >= 8 && /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(val)),
+      {
+        message: 'Password must be at least 8 characters and include uppercase, lowercase, and a number',
+      }
+    ),
+});
+
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;
+
 export const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1, 'Current password is required'),
