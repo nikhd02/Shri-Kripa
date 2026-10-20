@@ -142,7 +142,7 @@ function generateBookingReference(): string {
  * Returns the current date (YYYY-MM-DD) and minute of the day (0-1439)
  * strictly in Indian Standard Time (IST - Asia/Kolkata, UTC+05:30).
  */
-export function getIndianStandardTime(): {
+function getIndianStandardTime(): {
   dateStr: string;
   currentMinutes: number;
 } {
