@@ -18,9 +18,30 @@ import {
   AlertTriangle,
   ArrowRight,
   Info,
+  CreditCard,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { placeOrderAction } from '@/server/actions/orders';
+
+declare global {
+  interface Window {
+    Razorpay?: any;
+  }
+}
+
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') return resolve(false);
+    if (window.Razorpay) return resolve(true);
+
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
 
 export interface PublicMenuVariant {
   id: string;
@@ -112,6 +133,8 @@ export function PublicMenuClient({
   const [customerPhone, setCustomerPhone] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [paymentMode, setPaymentMode] = useState<'ONLINE' | 'CASH'>('ONLINE');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isSubmitting, startOrderTransition] = useTransition();
 
   // Order Success Modal State
@@ -119,6 +142,7 @@ export function PublicMenuClient({
     orderNumber: string;
     total: string;
     tableNumber?: string;
+    isPaid?: boolean;
   } | null>(null);
 
   // Filter categories and items based on search query
@@ -317,16 +341,149 @@ export function PublicMenuClient({
 
       const res = await placeOrderAction(payload);
 
-      if (res.success && res.data) {
+      if (!res.success || !res.data) {
+        setCheckoutError(res.error || 'Failed to place order. Please try again.');
+        return;
+      }
+
+      // If customer chose Cash / Pay at counter
+      if (paymentMode === 'CASH') {
         setConfirmedOrder({
           orderNumber: res.data.orderNumber,
           total: res.data.total,
           tableNumber: res.data.tableNumber || verifiedTable?.tableNumber,
+          isPaid: false,
         });
         setCart([]);
         setIsCartOpen(false);
-      } else {
-        setCheckoutError(res.error || 'Failed to place order. Please try again.');
+        return;
+      }
+
+      // Customer chose Pay Online via Razorpay
+      setIsProcessingPayment(true);
+      try {
+        const createRes = await fetch('/api/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId: res.data.orderId }),
+        });
+
+        const createData = await createRes.json();
+
+        if (!createRes.ok || !createData.success) {
+          // If Razorpay gateway is unavailable, inform customer and fall back gracefully to counter payment
+          setCheckoutError(
+            createData.error || 'Online payment initiation failed. Your order has been placed for pay at counter.'
+          );
+          setConfirmedOrder({
+            orderNumber: res.data.orderNumber,
+            total: res.data.total,
+            tableNumber: res.data.tableNumber || verifiedTable?.tableNumber,
+            isPaid: false,
+          });
+          setCart([]);
+          setIsCartOpen(false);
+          return;
+        }
+
+        const scriptLoaded = await loadRazorpayScript();
+        if (!scriptLoaded) {
+          setCheckoutError('Payment gateway could not be loaded. Please pay at counter.');
+          setConfirmedOrder({
+            orderNumber: res.data.orderNumber,
+            total: res.data.total,
+            tableNumber: res.data.tableNumber || verifiedTable?.tableNumber,
+            isPaid: false,
+          });
+          setCart([]);
+          setIsCartOpen(false);
+          return;
+        }
+
+        const rzpOptions = {
+          key: createData.keyId,
+          amount: createData.amount,
+          currency: createData.currency,
+          name: 'Shree Kripa Family Restaurant',
+          description: `Order #${res.data.orderNumber}`,
+          order_id: createData.razorpayOrderId,
+          prefill: {
+            name: customerName.trim() || undefined,
+            contact: customerPhone.trim() || undefined,
+          },
+          theme: {
+            color: '#7B1D1D',
+          },
+          handler: async function (response: {
+            razorpay_payment_id: string;
+            razorpay_order_id: string;
+            razorpay_signature: string;
+          }) {
+            setIsProcessingPayment(true);
+            try {
+              const verifyRes = await fetch('/api/verify-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  orderId: res.data!.orderId,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                }),
+              });
+
+              const verifyData = await verifyRes.json();
+              if (verifyRes.ok && verifyData.success) {
+                setConfirmedOrder({
+                  orderNumber: res.data!.orderNumber,
+                  total: res.data!.total,
+                  tableNumber: res.data!.tableNumber || verifiedTable?.tableNumber,
+                  isPaid: true,
+                });
+                setCart([]);
+                setIsCartOpen(false);
+              } else {
+                setCheckoutError(
+                  verifyData.error || 'Payment verification failed. Please contact restaurant staff.'
+                );
+              }
+            } catch (err) {
+              setCheckoutError('Payment verification check failed. Please verify with staff.');
+            } finally {
+              setIsProcessingPayment(false);
+            }
+          },
+          modal: {
+            ondismiss: function () {
+              setIsProcessingPayment(false);
+              // Order has been placed in kitchen, but payment is pending at counter
+              setConfirmedOrder({
+                orderNumber: res.data!.orderNumber,
+                total: res.data!.total,
+                tableNumber: res.data!.tableNumber || verifiedTable?.tableNumber,
+                isPaid: false,
+              });
+              setCart([]);
+              setIsCartOpen(false);
+            },
+          },
+        };
+
+        const rzp = new window.Razorpay(rzpOptions);
+        rzp.open();
+      } catch (err) {
+        console.error('[Razorpay:Checkout] Error launching checkout modal:', err);
+        setCheckoutError('Payment gateway error. Your order was received for counter payment.');
+        setConfirmedOrder({
+          orderNumber: res.data.orderNumber,
+          total: res.data.total,
+          tableNumber: res.data.tableNumber || verifiedTable?.tableNumber,
+          isPaid: false,
+        });
+        setCart([]);
+        setIsCartOpen(false);
+      } finally {
+        setIsProcessingPayment(false);
       }
     });
   };
@@ -993,20 +1150,55 @@ export function PublicMenuClient({
                   </div>
                 </div>
 
+                {/* Payment Mode Selection */}
+                <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMode('ONLINE')}
+                    className={`py-2 px-3 rounded-xl border text-center font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      paymentMode === 'ONLINE'
+                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)] shadow-xs'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>Pay Online</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMode('CASH')}
+                    className={`py-2 px-3 rounded-xl border text-center font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      paymentMode === 'CASH'
+                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)] shadow-xs'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span>💵 Pay at Counter</span>
+                  </button>
+                </div>
+
                 <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800 flex items-center gap-2">
                   <Info className="w-4 h-4 text-amber-600 flex-shrink-0" />
                   <span>
-                    Pay at counter or table after dining via <strong>Cash or UPI</strong>.
+                    {paymentMode === 'ONLINE'
+                      ? 'Secure Standard Checkout via UPI, Debit/Credit Card, or NetBanking.'
+                      : 'Pay at counter or dining table via Cash or UPI upon completion.'}
                   </span>
                 </div>
 
                 <button
                   type="button"
                   onClick={handlePlaceOrder}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isProcessingPayment}
                   className="w-full py-3 rounded-xl bg-[var(--color-primary)] text-white font-bold text-sm hover:bg-[var(--color-primary-dark)] transition-colors shadow-md flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
-                  {isSubmitting ? 'Sending Order to Kitchen...' : `Place Order (${formatCurrency(cartTotal)})`}
+                  {isSubmitting
+                    ? 'Placing Order...'
+                    : isProcessingPayment
+                    ? 'Processing Payment...'
+                    : paymentMode === 'ONLINE'
+                    ? `Pay & Place Order (${formatCurrency(cartTotal)})`
+                    : `Place Order — Pay at Counter (${formatCurrency(cartTotal)})`}
                 </button>
               </div>
             )}
@@ -1023,8 +1215,14 @@ export function PublicMenuClient({
             </div>
 
             <div>
-              <span className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-green-100 text-green-800 mb-1">
-                Order Received!
+              <span
+                className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-1 ${
+                  confirmedOrder.isPaid
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-amber-100 text-amber-800'
+                }`}
+              >
+                {confirmedOrder.isPaid ? 'Payment Confirmed & Order Received!' : 'Order Received!'}
               </span>
               <h2
                 className="text-2xl font-bold text-[var(--color-primary)]"
@@ -1052,6 +1250,23 @@ export function PublicMenuClient({
                   </span>
                 </div>
               )}
+              <div className="flex justify-between pb-1.5 border-b border-gray-200">
+                <span className="text-gray-500">Payment Status</span>
+                <span
+                  className={`font-bold flex items-center gap-1 ${
+                    confirmedOrder.isPaid ? 'text-green-700' : 'text-amber-700'
+                  }`}
+                >
+                  {confirmedOrder.isPaid ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+                      Paid Online (Razorpay)
+                    </>
+                  ) : (
+                    'Pending (Pay at Counter)'
+                  )}
+                </span>
+              </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Total Payable</span>
                 <span className="font-bold text-gray-800">
@@ -1061,7 +1276,9 @@ export function PublicMenuClient({
             </div>
 
             <p className="text-[11px] text-gray-500">
-              Payment will be collected at counter or table upon completion (Cash / UPI).
+              {confirmedOrder.isPaid
+                ? 'Your online payment has been securely confirmed. Enjoy your meal!'
+                : 'Payment will be collected at counter or table upon completion (Cash / UPI).'}
             </p>
 
             <button
