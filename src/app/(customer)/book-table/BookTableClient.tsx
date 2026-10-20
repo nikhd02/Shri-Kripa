@@ -20,6 +20,8 @@ import {
   ArrowRight,
   Phone,
   MapPin,
+  Check,
+  XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -345,15 +347,33 @@ export function BookTableClient({
 
       {/* ─── 2. Time Slot Selection ─── */}
       <div className="space-y-3">
-        <label className="block text-xs font-bold uppercase tracking-wider text-[#241512] flex items-center justify-between">
-          <span className="flex items-center gap-1.5">
-            <Clock className="w-4 h-4 text-[#C9A84C]" />
-            Available Dining Slots <span className="text-red-500">*</span>
-          </span>
-          <span className="text-[10px] text-gray-500 font-normal">
-            90 mins standard dining slot
-          </span>
-        </label>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#241512] flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-[#C9A84C]" />
+              <span>Dining Time Slots</span>
+              <span className="text-red-500">*</span>
+            </label>
+            <p className="text-[10px] text-gray-500 mt-0.5">
+              90 mins standard dining slot • Live real-time table availability
+            </p>
+          </div>
+
+          {/* Real-time Status Legend */}
+          {slots.length > 0 && !isLoadingSlots && (
+            <div className="flex items-center gap-3 text-[11px] bg-white px-3 py-1.5 rounded-xl border border-gray-200 shadow-2xs self-start sm:self-auto">
+              <span className="inline-flex items-center gap-1.5 font-bold text-emerald-800">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-2xs inline-block animate-pulse" />
+                Available ({slots.filter((s) => s.available).length})
+              </span>
+              <span className="text-gray-300">|</span>
+              <span className="inline-flex items-center gap-1.5 font-bold text-rose-700">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
+                Booked ({slots.filter((s) => !s.available).length})
+              </span>
+            </div>
+          )}
+        </div>
 
         {isLoadingSlots ? (
           <div className="p-8 text-center bg-[#FFF8F0]/50 rounded-2xl border border-gray-200">
@@ -395,7 +415,7 @@ export function BookTableClient({
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-2.5">
               {slots.map((slot) => {
                 const isSelected = selectedSlot === slot.time;
                 const isUnavailableClicked = selectedUnavailableSlot === slot.time;
@@ -413,25 +433,68 @@ export function BookTableClient({
                         setSelectedUnavailableSlot(slot.time);
                       }
                     }}
-                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer relative ${
+                    className={`p-3 rounded-xl border text-center transition-all cursor-pointer relative flex flex-col items-center justify-center gap-1.5 ${
                       isSelected
                         ? 'bg-[#7B1D1D] text-white border-[#7B1D1D] shadow-md ring-2 ring-[#C9A84C]'
                         : slot.available
-                        ? 'bg-[#FFF8F0] hover:bg-[#faeedd] border-[#C9A84C]/40 text-[#241512]'
+                        ? 'bg-emerald-50/40 hover:bg-emerald-50 border-emerald-300 text-[#241512] hover:shadow-xs'
                         : isUnavailableClicked
-                        ? 'bg-amber-100 border-amber-400 text-amber-900 ring-2 ring-amber-500'
-                        : 'bg-gray-100 border-gray-200 text-gray-400 hover:border-gray-300'
+                        ? 'bg-rose-100 border-rose-400 text-rose-950 ring-2 ring-rose-500 shadow-xs'
+                        : 'bg-gray-100/80 border-gray-200 text-gray-500 hover:border-rose-300 hover:bg-rose-50/40'
                     }`}
-                    title={slot.reason || (slot.available ? `${slot.remainingCapacity} seats free` : 'Unavailable')}
+                    title={slot.reason || (slot.available ? `${slot.remainingCapacity} seats free` : 'Booked / Unavailable')}
                   >
-                    <p className="text-xs font-bold">{slot.label}</p>
-                    <p className="text-[9px] mt-0.5 opacity-80">
-                      {slot.available ? 'Available' : 'Booked'}
+                    <p className={`text-xs font-bold tracking-tight ${isSelected ? 'text-white' : slot.available ? 'text-[#241512]' : 'text-gray-600'}`}>
+                      {slot.label}
                     </p>
+                    
+                    {/* Explicit visual status tag */}
+                    {isSelected ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#C9A84C] text-[#241512] shadow-2xs">
+                        <Check className="w-3 h-3" /> Selected
+                      </span>
+                    ) : slot.available ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                        Available
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 text-rose-700 border border-rose-200">
+                        <XCircle className="w-3 h-3 text-rose-600" />
+                        Booked
+                      </span>
+                    )}
                   </button>
                 );
               })}
             </div>
+
+            {/* Live Status banner for selected available slot */}
+            {selectedSlot && (
+              <div className="p-3.5 rounded-xl bg-emerald-50/90 border border-emerald-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-emerald-950 animate-in fade-in duration-200">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                    <Check className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="font-medium">
+                      Selected Slot: <strong className="font-bold text-[#7B1D1D]">{slots.find((s) => s.time === selectedSlot)?.label}</strong>
+                      {' • '}Status:{' '}
+                      <strong className="text-emerald-700 font-bold inline-flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block" />
+                        Available for {guestCount} {guestCount === 1 ? 'Guest' : 'Guests'}
+                      </strong>
+                    </span>
+                    <p className="text-[11px] text-emerald-800 mt-0.5">
+                      Table reserved for your party. Please complete the guest details below.
+                    </p>
+                  </div>
+                </div>
+                <span className="self-start sm:self-auto text-[10px] font-bold text-emerald-800 bg-white px-2.5 py-1 rounded-md border border-emerald-200 shadow-2xs">
+                  Ready to Book
+                </span>
+              </div>
+            )}
 
             {/* Display assistance banner when user clicked an unavailable slot or if all slots are unavailable */}
             {(selectedUnavailableSlot || !slots.some((s) => s.available)) && (
@@ -439,6 +502,12 @@ export function BookTableClient({
                 <div className="flex items-start gap-2.5">
                   <AlertCircle className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
                   <div>
+                    {selectedUnavailableSlot && (
+                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[11px] font-bold border border-rose-200 mb-1.5">
+                        <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                        Slot {slots.find((s) => s.time === selectedUnavailableSlot)?.label || selectedUnavailableSlot}: Booked / Unavailable
+                      </div>
+                    )}
                     <p className="text-xs sm:text-sm font-bold text-[#7B1D1D]">
                       Sorry, no tables are available for this time slot. Please contact the restaurant for assistance or try another time.
                     </p>
