@@ -1,0 +1,524 @@
+/**
+ * src/server/actions/bookings.ts
+ *
+ * Server actions for online table booking, capacity validation,
+ * concurrency locking, and staff management of reservations.
+ */
+
+'use server';
+
+import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/session';
+import { Role, BookingStatus } from '@prisma/client';
+import { revalidatePath } from 'next/cache';
+import {
+  createBookingSchema,
+  updateBookingStatusSchema,
+} from '@/lib/validations/booking';
+import { sendTableBookingEmail } from '@/lib/email';
+
+export interface BookingSlot {
+  time: string; // e.g. "12:30"
+  label: string; // e.g. "12:30 PM"
+  available: boolean;
+  reason?: string;
+  remainingCapacity: number;
+}
+
+export interface BookingDTO {
+  id: string;
+  bookingReference: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string | null;
+  guestCount: number;
+  bookingDate: string;
+  timeSlot: string;
+  durationMinutes: number;
+  status: BookingStatus;
+  specialRequest: string | null;
+  staffNotes: string | null;
+  tableId: string | null;
+  tableNumber: string | null;
+  createdAt: string;
+}
+
+/**
+ * Parses restaurant operating hours text (e.g. "11:00 AM - 11:00 PM" or "10:00 - 22:30")
+ */
+function parseOperatingHours(hoursStr?: string | null): {
+  valid: boolean;
+  openMinutes: number;
+  closeMinutes: number;
+  text: string;
+} {
+  const defaultText = '11:00 AM - 11:00 PM';
+  const str = hoursStr?.trim() || defaultText;
+
+  // Match e.g. "11:00 AM - 11:00 PM" or "11:00 - 23:00"
+  const match12 = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (match12) {
+    const [, h1, m1, p1, h2, m2, p2] = match12;
+    let openH = parseInt(h1, 10);
+    if (p1.toUpperCase() === 'PM' && openH < 12) openH += 12;
+    if (p1.toUpperCase() === 'AM' && openH === 12) openH = 0;
+
+    let closeH = parseInt(h2, 10);
+    if (p2.toUpperCase() === 'PM' && closeH < 12) closeH += 12;
+    if (p2.toUpperCase() === 'AM' && closeH === 12) closeH = 0;
+
+    return {
+      valid: true,
+      openMinutes: openH * 60 + parseInt(m1, 10),
+      closeMinutes: closeH * 60 + parseInt(m2, 10),
+      text: str,
+    };
+  }
+
+  const match24 = str.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+  if (match24) {
+    const [, h1, m1, h2, m2] = match24;
+    return {
+      valid: true,
+      openMinutes: parseInt(h1, 10) * 60 + parseInt(m1, 10),
+      closeMinutes: parseInt(h2, 10) * 60 + parseInt(m2, 10),
+      text: str,
+    };
+  }
+
+  return { valid: false, openMinutes: 0, closeMinutes: 0, text: str };
+}
+
+function minutesToTimeString(minutes: number): { time: string; label: string } {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
+  const period = h >= 12 ? 'PM' : 'AM';
+  const displayH = h % 12 === 0 ? 12 : h % 12;
+  const label = `${displayH}:${String(m).padStart(2, '0')} ${period}`;
+
+  return { time, label };
+}
+
+function timeStringToMinutes(timeStr: string): number {
+  const [h, m] = timeStr.split(':').map((x) => parseInt(x, 10));
+  return h * 60 + m;
+}
+
+function generateBookingReference(): string {
+  const now = new Date();
+  const year = String(now.getFullYear()).slice(-2);
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const random4 = Math.floor(1000 + Math.random() * 9000);
+  return `TB-${year}${month}${day}-${random4}`;
+}
+
+/**
+ * Public Action: Query available booking slots for a requested date & party size
+ */
+export async function getAvailableBookingSlotsAction(
+  dateString: string,
+  guestCount: number
+): Promise<{
+  success: boolean;
+  slots?: BookingSlot[];
+  operatingHoursText?: string;
+  error?: string;
+}> {
+  try {
+    if (!dateString || isNaN(Date.parse(dateString))) {
+      return { success: false, error: 'Please select a valid reservation date.' };
+    }
+    if (guestCount < 1 || guestCount > 30) {
+      return { success: false, error: 'Party size must be between 1 and 30 guests.' };
+    }
+
+    const settings = await db.restaurantSettings.findFirst();
+    const hours = parseOperatingHours(settings?.openingHours);
+
+    if (!hours.valid) {
+      return {
+        success: false,
+        error:
+          'Restaurant operating hours are not configured. Please contact the restaurant directly at +91 94152 68463 to reserve your table.',
+      };
+    }
+
+    // Fetch active tables
+    const activeTables = await db.restaurantTable.findMany({
+      where: { isActive: true },
+      orderBy: { capacity: 'asc' },
+    });
+
+    if (activeTables.length === 0) {
+      return {
+        success: false,
+        error: 'No active dining tables are configured. Please contact restaurant reception.',
+      };
+    }
+
+    const targetDate = new Date(dateString);
+    targetDate.setHours(0, 0, 0, 0);
+
+    // Fetch existing confirmed or pending bookings for that date
+    const existingBookings = await db.tableBooking.findMany({
+      where: {
+        bookingDate: targetDate,
+        status: { in: [BookingStatus.CONFIRMED, BookingStatus.PENDING] },
+      },
+    });
+
+    // Generate slots at 30-min intervals. Last slot must leave at least 60 mins before close.
+    const slots: BookingSlot[] = [];
+    const DURATION = 90; // minutes
+    const now = new Date();
+    const isToday =
+      now.getFullYear() === targetDate.getFullYear() &&
+      now.getMonth() === targetDate.getMonth() &&
+      now.getDate() === targetDate.getDate();
+
+    const currentMinuteOfDay = now.getHours() * 60 + now.getMinutes();
+
+    for (let minute = hours.openMinutes; minute <= hours.closeMinutes - 60; minute += 30) {
+      const { time, label } = minutesToTimeString(minute);
+
+      // If today, reject past time slots (require at least 30 min advance booking)
+      if (isToday && minute <= currentMinuteOfDay + 30) {
+        slots.push({
+          time,
+          label,
+          available: false,
+          reason: 'Time has passed or requires 30 mins advance notice',
+          remainingCapacity: 0,
+        });
+        continue;
+      }
+
+      // Check which tables are occupied in the interval [minute - 89, minute + 89]
+      const overlappingBookings = existingBookings.filter((b) => {
+        const bMin = timeStringToMinutes(b.timeSlot);
+        const bDur = b.durationMinutes || DURATION;
+        return Math.abs(bMin - minute) < Math.min(DURATION, bDur);
+      });
+
+      const bookedTableIds = new Set(
+        overlappingBookings.map((b) => b.tableId).filter(Boolean) as string[]
+      );
+
+      const bookedGuests = overlappingBookings.reduce((sum, b) => sum + b.guestCount, 0);
+      const totalCapacity = activeTables.reduce((sum, t) => sum + t.capacity, 0);
+      const remainingCapacity = Math.max(0, totalCapacity - bookedGuests);
+
+      // Free tables that are not occupied during this slot
+      const freeTables = activeTables.filter((t) => !bookedTableIds.has(t.id));
+
+      // Check if there is a single table or enough unassigned capacity that fits the party
+      const hasFittingTable = freeTables.some((t) => t.capacity >= guestCount);
+      const isCapacitySufficient = remainingCapacity >= guestCount;
+
+      const isAvailable = hasFittingTable && isCapacitySufficient;
+
+      slots.push({
+        time,
+        label,
+        available: isAvailable,
+        reason: !isAvailable ? (remainingCapacity < guestCount ? 'Fully Booked' : 'No Table of this Size Free') : undefined,
+        remainingCapacity,
+      });
+    }
+
+    return {
+      success: true,
+      slots,
+      operatingHoursText: hours.text,
+    };
+  } catch (err) {
+    console.error('[Bookings:GetSlots] Error:', err);
+    return { success: false, error: 'Failed to retrieve available reservation slots.' };
+  }
+}
+
+/**
+ * Public Action: Create a Table Booking
+ */
+export async function createTableBookingAction(rawInput: unknown): Promise<{
+  success: boolean;
+  booking?: BookingDTO;
+  error?: string;
+  fieldErrors?: Record<string, string[]>;
+}> {
+  const parsed = createBookingSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Please check the booking details entered.',
+      fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+    };
+  }
+
+  const {
+    customerName,
+    customerPhone,
+    customerEmail,
+    guestCount,
+    bookingDate,
+    timeSlot,
+    specialRequest,
+  } = parsed.data;
+
+  const targetDate = new Date(bookingDate);
+  targetDate.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (targetDate < today) {
+    return { success: false, error: 'Cannot book a table for a past date.' };
+  }
+
+  try {
+    // Execute atomic transaction with concurrency check
+    const newBooking = await db.$transaction(
+      async (tx) => {
+        // 1. Verify operating hours
+        const settings = await tx.restaurantSettings.findFirst();
+        const hours = parseOperatingHours(settings?.openingHours);
+
+        if (!hours.valid) {
+          throw new Error('Restaurant operating hours are not configured.');
+        }
+
+        const slotMinutes = timeStringToMinutes(timeSlot);
+        if (slotMinutes < hours.openMinutes || slotMinutes > hours.closeMinutes - 60) {
+          throw new Error(`The selected time slot is outside operating hours (${hours.text}).`);
+        }
+
+        // 2. Fetch active tables
+        const activeTables = await tx.restaurantTable.findMany({
+          where: { isActive: true },
+          orderBy: { capacity: 'asc' },
+        });
+
+        if (activeTables.length === 0) {
+          throw new Error('No dining tables are currently active.');
+        }
+
+        // 3. Find overlapping bookings for this time window (90 mins duration)
+        const DURATION = 90;
+        const existingBookings = await tx.tableBooking.findMany({
+          where: {
+            bookingDate: targetDate,
+            status: { in: [BookingStatus.CONFIRMED, BookingStatus.PENDING] },
+          },
+        });
+
+        const overlappingBookings = existingBookings.filter((b) => {
+          const bMin = timeStringToMinutes(b.timeSlot);
+          const bDur = b.durationMinutes || DURATION;
+          return Math.abs(bMin - slotMinutes) < Math.min(DURATION, bDur);
+        });
+
+        const bookedTableIds = new Set(
+          overlappingBookings.map((b) => b.tableId).filter(Boolean) as string[]
+        );
+
+        const bookedGuests = overlappingBookings.reduce((sum, b) => sum + b.guestCount, 0);
+        const totalCapacity = activeTables.reduce((sum, t) => sum + t.capacity, 0);
+
+        if (totalCapacity - bookedGuests < guestCount) {
+          throw new Error('Sorry, all tables are fully booked for this time slot. Please choose another time.');
+        }
+
+        // 4. Select the best available table (smallest capacity that fits the party)
+        const availableTables = activeTables.filter((t) => !bookedTableIds.has(t.id));
+        const suitableTable = availableTables.find((t) => t.capacity >= guestCount) || null;
+
+        if (!suitableTable && availableTables.length === 0) {
+          throw new Error('No suitable dining table is free for this time slot. Please pick another slot.');
+        }
+
+        // 5. Generate unique booking reference
+        let bookingReference = generateBookingReference();
+        let isUnique = false;
+        let attempts = 0;
+        while (!isUnique && attempts < 5) {
+          const found = await tx.tableBooking.findUnique({ where: { bookingReference } });
+          if (!found) {
+            isUnique = true;
+          } else {
+            bookingReference = generateBookingReference();
+            attempts++;
+          }
+        }
+
+        // 6. Create booking
+        const created = await tx.tableBooking.create({
+          data: {
+            bookingReference,
+            customerName: customerName.trim(),
+            customerPhone: customerPhone.trim(),
+            customerEmail: customerEmail?.trim().toLowerCase() || null,
+            guestCount,
+            bookingDate: targetDate,
+            timeSlot,
+            durationMinutes: DURATION,
+            status: BookingStatus.PENDING,
+            specialRequest: specialRequest?.trim() || null,
+            tableId: suitableTable?.id || null,
+          },
+          include: { table: true },
+        });
+
+        return created;
+      },
+      { maxWait: 5000, timeout: 15000 }
+    );
+
+    // Send confirmation/receipt email if email is provided
+    if (customerEmail?.trim()) {
+      try {
+        await sendTableBookingEmail({
+          bookingReference: newBooking.bookingReference,
+          customerName: newBooking.customerName,
+          customerEmail: customerEmail.trim().toLowerCase(),
+          customerPhone: newBooking.customerPhone,
+          bookingDate: targetDate.toLocaleDateString('en-IN', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          }),
+          timeSlot: newBooking.timeSlot,
+          guestCount: newBooking.guestCount,
+          tableNumber: newBooking.table?.tableNumber,
+          specialRequest: newBooking.specialRequest,
+          isConfirmed: false,
+        });
+      } catch (emailErr) {
+        console.error('[Bookings:Email] Error sending receipt email:', emailErr);
+      }
+    }
+
+    revalidatePath('/dashboard/bookings');
+
+    return {
+      success: true,
+      booking: {
+        id: newBooking.id,
+        bookingReference: newBooking.bookingReference,
+        customerName: newBooking.customerName,
+        customerPhone: newBooking.customerPhone,
+        customerEmail: newBooking.customerEmail,
+        guestCount: newBooking.guestCount,
+        bookingDate: newBooking.bookingDate.toISOString().split('T')[0],
+        timeSlot: newBooking.timeSlot,
+        durationMinutes: newBooking.durationMinutes,
+        status: newBooking.status,
+        specialRequest: newBooking.specialRequest,
+        staffNotes: newBooking.staffNotes,
+        tableId: newBooking.tableId,
+        tableNumber: newBooking.table?.tableNumber || null,
+        createdAt: newBooking.createdAt.toISOString(),
+      },
+    };
+  } catch (err: unknown) {
+    console.error('[Bookings:Create] Error:', err);
+    const message = err instanceof Error ? err.message : 'Failed to complete your reservation. Please try again.';
+    return {
+      success: false,
+      error: message,
+    };
+  }
+}
+
+/**
+ * Staff/Admin Action: Update Table Booking Status & Assign Table
+ */
+export async function updateBookingStatusAction(rawInput: unknown): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  await requireAuth([Role.ADMIN, Role.MANAGER, Role.STAFF]);
+
+  const parsed = updateBookingStatusSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid booking update data.' };
+  }
+
+  const { bookingId, status, tableId, staffNotes } = parsed.data;
+
+  try {
+    const existing = await db.tableBooking.findUnique({
+      where: { id: bookingId },
+      include: { table: true },
+    });
+
+    if (!existing) {
+      return { success: false, error: 'Booking not found.' };
+    }
+
+    const updated = await db.tableBooking.update({
+      where: { id: bookingId },
+      data: {
+        status,
+        ...(tableId !== undefined ? { tableId: tableId || null } : {}),
+        ...(staffNotes !== undefined ? { staffNotes: staffNotes?.trim() || null } : {}),
+      },
+      include: { table: true },
+    });
+
+    // If status became CONFIRMED and customer has email, send Confirmation Email!
+    if (status === BookingStatus.CONFIRMED && updated.customerEmail) {
+      try {
+        await sendTableBookingEmail({
+          bookingReference: updated.bookingReference,
+          customerName: updated.customerName,
+          customerEmail: updated.customerEmail,
+          customerPhone: updated.customerPhone,
+          bookingDate: updated.bookingDate.toLocaleDateString('en-IN', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          }),
+          timeSlot: updated.timeSlot,
+          guestCount: updated.guestCount,
+          tableNumber: updated.table?.tableNumber,
+          specialRequest: updated.specialRequest,
+          isConfirmed: true,
+        });
+      } catch (emailErr) {
+        console.error('[Bookings:StaffConfirmEmail] Error:', emailErr);
+      }
+    }
+
+    revalidatePath('/dashboard/bookings');
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[Bookings:UpdateStatus] Error:', err);
+    return { success: false, error: 'Failed to update booking status.' };
+  }
+}
+
+/**
+ * Admin Action: Delete a Booking
+ */
+export async function deleteBookingAction(bookingId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  await requireAuth([Role.ADMIN]);
+
+  try {
+    await db.tableBooking.delete({
+      where: { id: bookingId },
+    });
+    revalidatePath('/dashboard/bookings');
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[Bookings:Delete] Error:', err);
+    return { success: false, error: 'Failed to delete booking record.' };
+  }
+}

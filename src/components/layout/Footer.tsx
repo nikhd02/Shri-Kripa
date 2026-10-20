@@ -63,6 +63,7 @@ export function Footer() {
               {[
                 { href: '/', label: 'Home Experience' },
                 { href: '/menu', label: 'Culinary Menu & Ordering' },
+                { href: '/book-table', label: 'Reserve Dining Table' },
                 { href: '/banquet', label: 'Banquet & Celebrations' },
                 { href: '/contact', label: 'Location & Map' },
                 { href: '/login', label: 'Staff & Admin Portal' },

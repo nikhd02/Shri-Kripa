@@ -106,12 +106,17 @@ export async function POST(request: Request) {
 
     // 4. Confirm actual payment status with Razorpay API
     let isStatusConfirmed = false;
-    let paymentDetails: any = null;
+    interface RazorpayFetchedPayment {
+      order_id?: string;
+      status?: string;
+      amount?: number | string;
+    }
+    let paymentDetails: RazorpayFetchedPayment | null = null;
 
     if (keyId && keySecret) {
       try {
         const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
-        paymentDetails = await razorpay.payments.fetch(razorpay_payment_id);
+        paymentDetails = (await razorpay.payments.fetch(razorpay_payment_id)) as unknown as RazorpayFetchedPayment;
 
         const expectedAmountInPaise = Math.round(Number(order.total) * 100);
 

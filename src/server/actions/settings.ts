@@ -63,7 +63,7 @@ export async function updateRestaurantSettingsAction(
 
   try {
     // 3. Find existing settings row
-    let existing = await db.restaurantSettings.findFirst();
+    const existing = await db.restaurantSettings.findFirst();
 
     let updated;
     if (existing) {

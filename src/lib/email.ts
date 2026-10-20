@@ -459,3 +459,142 @@ export async function sendOrderConfirmedByStaffEmail(payload: OrderEmailPayload)
     return { success: false, error: err };
   }
 }
+
+export interface BookingEmailPayload {
+  bookingReference: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  bookingDate: string;
+  timeSlot: string;
+  guestCount: number;
+  tableNumber?: string | null;
+  specialRequest?: string | null;
+  isConfirmed?: boolean;
+}
+
+/**
+ * 4. Send Table Booking Confirmation / Receipt Email to Customer
+ */
+export async function sendTableBookingEmail(payload: BookingEmailPayload) {
+  try {
+    const transporter = getMailTransporter();
+    if (!transporter) return { success: false, reason: 'SMTP not configured' };
+
+    const statusTitle = payload.isConfirmed ? 'Reservation Confirmed' : 'Table Booking Request Received';
+    const statusBadge = payload.isConfirmed ? '✓ Table Confirmed' : '⏳ Booking Received';
+    const badgeColor = payload.isConfirmed ? '#065f46' : '#92400e';
+    const badgeBg = payload.isConfirmed ? '#ecfdf5' : '#fef3c7';
+    const badgeBorder = payload.isConfirmed ? '#a7f3d0' : '#fde68a';
+
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"><title>${statusTitle} - Shree Kripa</title></head>
+    <body style="margin: 0; padding: 24px 0; background-color: #fbf7f4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td align="center">
+            <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #ebdcd0; max-width: 92%;">
+              
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #7B1D1D 0%, #521212 100%); padding: 32px 24px; text-align: center;">
+                  <h1 style="color: #FFF8F0; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: 0.5px;">SHREE KRIPA</h1>
+                  <p style="color: #C9A84C; margin: 6px 0 0 0; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;">Family Restaurant & Banquet • Varanasi</p>
+                </td>
+              </tr>
+
+              <!-- Status Banner -->
+              <tr>
+                <td style="padding: 24px 28px 12px 28px; text-align: center;">
+                  <div style="display: inline-block; background-color: ${badgeBg}; border: 1px solid ${badgeBorder}; border-radius: 50px; padding: 8px 18px; margin-bottom: 12px;">
+                    <span style="color: ${badgeColor}; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;">${statusBadge}</span>
+                  </div>
+                  <h2 style="color: #241512; font-size: 20px; margin: 8px 0 4px 0;">Namaste, ${payload.customerName}!</h2>
+                  <p style="color: #6b5c58; font-size: 14px; margin: 0; line-height: 1.5;">
+                    ${
+                      payload.isConfirmed
+                        ? 'Your dining reservation is confirmed. We look forward to hosting you and your guests!'
+                        : 'Your table reservation request has been received. Our hospitality team is assigning your table.'
+                    }
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Reservation Details -->
+              <tr>
+                <td style="padding: 12px 28px 24px 28px;">
+                  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #fdfaf7; border-radius: 12px; padding: 16px; border: 1px solid #f0e6dc;">
+                    <tr>
+                      <td style="font-size: 13px; color: #6b5c58; padding: 6px 0;">Booking Reference:</td>
+                      <td style="font-size: 14px; color: #7B1D1D; font-weight: 700; text-align: right; font-family: monospace;">${payload.bookingReference}</td>
+                    </tr>
+                    <tr>
+                      <td style="font-size: 13px; color: #6b5c58; padding: 6px 0;">Reservation Date:</td>
+                      <td style="font-size: 14px; color: #241512; font-weight: 700; text-align: right;">${payload.bookingDate}</td>
+                    </tr>
+                    <tr>
+                      <td style="font-size: 13px; color: #6b5c58; padding: 6px 0;">Time Slot:</td>
+                      <td style="font-size: 14px; color: #7B1D1D; font-weight: 700; text-align: right;">${payload.timeSlot} (90 Mins)</td>
+                    </tr>
+                    <tr>
+                      <td style="font-size: 13px; color: #6b5c58; padding: 6px 0;">Guests:</td>
+                      <td style="font-size: 14px; color: #241512; font-weight: 700; text-align: right;">${payload.guestCount} People</td>
+                    </tr>
+                    ${
+                      payload.tableNumber
+                        ? `<tr>
+                      <td style="font-size: 13px; color: #6b5c58; padding: 6px 0;">Assigned Table:</td>
+                      <td style="font-size: 14px; color: #241512; font-weight: 700; text-align: right;">Table ${payload.tableNumber}</td>
+                    </tr>`
+                        : ''
+                    }
+                    ${
+                      payload.specialRequest
+                        ? `<tr>
+                      <td style="font-size: 13px; color: #6b5c58; padding: 6px 0;">Special Request:</td>
+                      <td style="font-size: 13px; color: #241512; font-style: italic; text-align: right;">"${payload.specialRequest}"</td>
+                    </tr>`
+                        : ''
+                    }
+                  </table>
+
+                  <div style="margin-top: 16px; padding: 12px; background-color: #fffbeb; border-radius: 8px; border: 1px solid #fef3c7; font-size: 12px; color: #92400e;">
+                    ℹ️ <strong>Reservation Policy:</strong> Tables are reserved without advance fee and held up to 15 minutes past your reserved time. If you are delayed or need to reschedule, please call us at +91 94152 68463.
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #241512; padding: 24px; text-align: center; color: #FFF8F0;">
+                  <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 600; color: #C9A84C;">Shree Kripa Family Restaurant & Banquet</p>
+                  <p style="margin: 0; font-size: 12px; color: #ebdcd0; line-height: 1.4;">
+                    Akhari Bypass, Near Toll Plaza, Varanasi, Uttar Pradesh<br/>
+                    Phone: +91 9415268463 • Web: https://shri-kripa.vercel.app
+                  </p>
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>`;
+
+    const info = await transporter.sendMail({
+      from: `"Shree Kripa Restaurant" <${process.env.SMTP_USER}>`,
+      to: payload.customerEmail,
+      subject: `${statusTitle} #${payload.bookingReference} - Shree Kripa`,
+      html,
+    });
+
+    console.log('[EmailService] Table booking email sent:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (err) {
+    console.error('[EmailService] Failed to send table booking email:', err);
+    return { success: false, error: err };
+  }
+}
