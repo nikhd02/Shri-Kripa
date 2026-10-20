@@ -315,6 +315,127 @@ export async function getAvailableBookingSlotsAction(
   }
 }
 
+/**
+ * Public Action: Check real-time table availability for any custom chosen time
+ */
+export async function checkSingleSlotAvailabilityAction(
+  dateString: string,
+  timeSlot: string,
+  guestCount: number
+): Promise<{
+  success: boolean;
+  available: boolean;
+  isPast?: boolean;
+  reason?: string;
+  formattedTime?: string;
+}> {
+  try {
+    if (!dateString || !timeSlot) {
+      return { success: false, available: false, reason: 'Please select both date and time.' };
+    }
+
+    const { dateStr: todayIST, currentMinutes: currentMinuteOfDay } = getIndianStandardTime();
+    if (dateString < todayIST) {
+      return { success: true, available: false, isPast: true, reason: 'This date has already passed.' };
+    }
+
+    const slotMinutes = timeStringToMinutes(timeSlot);
+    if (isNaN(slotMinutes)) {
+      return { success: false, available: false, reason: 'Invalid time format.' };
+    }
+
+    const { label: formattedTime } = minutesToTimeString(slotMinutes);
+
+    if (dateString === todayIST && slotMinutes < currentMinuteOfDay) {
+      return {
+        success: true,
+        available: false,
+        isPast: true,
+        reason: `${formattedTime} has already passed for today. Please select an upcoming time.`,
+        formattedTime,
+      };
+    }
+
+    const settings = await db.restaurantSettings.findFirst();
+    const hours = parseOperatingHours(settings?.openingHours);
+    if (!hours.valid) {
+      return {
+        success: false,
+        available: false,
+        reason: 'Restaurant operating hours are not configured. Please contact the restaurant.',
+        formattedTime,
+      };
+    }
+
+    if (slotMinutes < hours.openMinutes || slotMinutes > hours.closeMinutes - 60) {
+      return {
+        success: true,
+        available: false,
+        reason: `Dining reservations are only available between ${minutesToTimeString(hours.openMinutes).label} and ${minutesToTimeString(hours.closeMinutes - 60).label}.`,
+        formattedTime,
+      };
+    }
+
+    // Check eligible online tables
+    const onlineTables = await db.restaurantTable.findMany({
+      where: {
+        isActive: true,
+        onlineBookingEnabled: true,
+        capacity: { gte: guestCount },
+      },
+      orderBy: { capacity: 'asc' },
+    });
+
+    if (onlineTables.length === 0) {
+      return {
+        success: true,
+        available: false,
+        reason: 'No online tables available with sufficient capacity for your party size.',
+        formattedTime,
+      };
+    }
+
+    // Check overlapping bookings
+    const targetDate = parseDateAsUtc(dateString);
+    const DURATION = 90;
+    const existingBookings = await db.tableBooking.findMany({
+      where: {
+        bookingDate: targetDate,
+        status: { in: [BookingStatus.CONFIRMED, BookingStatus.PENDING] },
+      },
+    });
+
+    const occupiedTableIds = new Set<string>();
+    for (const b of existingBookings) {
+      const bMin = timeStringToMinutes(b.timeSlot);
+      const bDur = b.durationMinutes || DURATION;
+      if (Math.abs(bMin - slotMinutes) < Math.min(DURATION, bDur)) {
+        if (b.tableId) occupiedTableIds.add(b.tableId);
+      }
+    }
+
+    const hasAvailableTable = onlineTables.some((t) => !occupiedTableIds.has(t.id));
+
+    if (!hasAvailableTable) {
+      return {
+        success: true,
+        available: false,
+        reason: `Sorry, all tables are fully booked around ${formattedTime} for ${guestCount} guests. Please try another time or contact the restaurant.`,
+        formattedTime,
+      };
+    }
+
+    return {
+      success: true,
+      available: true,
+      formattedTime,
+    };
+  } catch (err) {
+    console.error('[CheckSingleSlot] Error:', err);
+    return { success: false, available: false, reason: 'Failed to verify slot availability.' };
+  }
+}
+
 // In-process concurrency lock to serialize simultaneous table allocations
 let lockPromise: Promise<void> = Promise.resolve();
 
