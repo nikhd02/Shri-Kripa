@@ -43,6 +43,16 @@ export const createBookingSchema = z.object({
     .max(500, 'Special requests cannot exceed 500 characters')
     .optional()
     .or(z.literal('')),
+  preOrderItems: z
+    .array(
+      z.object({
+        menuItemId: z.string().min(1),
+        quantity: z.number().int().min(1).max(50),
+        variantName: z.string().optional(),
+        specialInstructions: z.string().max(200).optional(),
+      })
+    )
+    .optional(),
 });
 
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;

@@ -9,7 +9,15 @@
 
 import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/session';
-import { Role, BookingStatus } from '@prisma/client';
+import {
+  Prisma,
+  Role,
+  BookingStatus,
+  OrderStatus,
+  OrderSource,
+  PaymentMethod,
+  PaymentStatus,
+} from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import {
   createBookingSchema,
@@ -51,6 +59,12 @@ export interface BookingDTO {
   tableNumber: string | null;
   tableOnlineBookingEnabled: boolean | null;
   createdAt: string;
+  preOrder?: {
+    orderNumber: string;
+    total: string;
+    itemsSummary: string;
+    items: { name: string; quantity: number; lineTotal: string }[];
+  } | null;
 }
 
 function parseDateAsUtc(dateStr: string): Date {
@@ -480,6 +494,7 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
     bookingDate,
     timeSlot,
     specialRequest,
+    preOrderItems,
   } = parsed.data;
 
   const targetDate = parseDateAsUtc(bookingDate);
@@ -499,7 +514,7 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
   }
 
   // Execute atomic transaction with concurrency check
-  const newBooking = await db.$transaction(
+  const transactionResult = await db.$transaction(
     async (tx) => {
         // 1. Verify operating hours and acquire row lock on settings to serialize concurrent reservations
         const settings = await tx.restaurantSettings.findFirst();
@@ -553,40 +568,53 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
           overlappingBookings.map((b) => b.tableId).filter(Boolean) as string[]
         );
 
-        // 4. Select the best available table (smallest capacity that fits the party)
-        const freeTable = eligibleTables.find((t) => !bookedTableIds.has(t.id));
+        // 4. Concurrency-Safe Table Assignment:
+        // Systematically inspect candidate tables. If a concurrent transaction just claimed a table,
+        // seamlessly continue to the next eligible table instead of failing the request!
+        let assignedTable: (typeof eligibleTables)[0] | null = null;
 
-        if (!freeTable) {
+        for (const table of eligibleTables) {
+          if (bookedTableIds.has(table.id)) {
+            continue; // Already reserved in snapshot
+          }
+
+          // Acquire exclusive row lock on this specific candidate table
+          await tx.restaurantTable.update({
+            where: { id: table.id },
+            data: { updatedAt: new Date() },
+          });
+
+          // Re-verify strictly with LOCK IN SHARE MODE to prevent race conditions across concurrent sessions
+          const recentOverlaps = await tx.$queryRaw<{ id: string; timeSlot: string; durationMinutes: number }[]>`
+            SELECT id, timeSlot, durationMinutes FROM table_bookings
+            WHERE DATE(bookingDate) = DATE(${bookingDate})
+              AND tableId = ${table.id}
+              AND status IN ('CONFIRMED', 'PENDING')
+            LOCK IN SHARE MODE
+          `;
+
+          let hasConflict = false;
+          if (recentOverlaps && recentOverlaps.length > 0) {
+            for (const overlap of recentOverlaps) {
+              const rMin = timeStringToMinutes(overlap.timeSlot);
+              const rDur = overlap.durationMinutes || DURATION;
+              if (Math.abs(rMin - slotMinutes) < Math.min(DURATION, rDur)) {
+                hasConflict = true;
+                break;
+              }
+            }
+          }
+
+          if (!hasConflict) {
+            assignedTable = table;
+            break; // Successfully secured and locked this table!
+          }
+        }
+
+        if (!assignedTable) {
           throw new Error(
             'Sorry, no tables are available for this time slot. Please contact the restaurant for assistance or try another time.'
           );
-        }
-
-        // Acquire exclusive row lock on the chosen table to serialize concurrent bookings
-        await tx.restaurantTable.update({
-          where: { id: freeTable.id },
-          data: { updatedAt: new Date() },
-        });
-
-        // Re-verify with a Current Read (LOCK IN SHARE MODE) so InnoDB reads latest committed bookings
-        const recentOverlaps = await tx.$queryRaw<{ id: string; timeSlot: string; durationMinutes: number }[]>`
-          SELECT id, timeSlot, durationMinutes FROM table_bookings
-          WHERE bookingDate = ${targetDate}
-            AND tableId = ${freeTable.id}
-            AND status IN ('CONFIRMED', 'PENDING')
-          LOCK IN SHARE MODE
-        `;
-
-        if (recentOverlaps && recentOverlaps.length > 0) {
-          for (const overlap of recentOverlaps) {
-            const rMin = timeStringToMinutes(overlap.timeSlot);
-            const rDur = overlap.durationMinutes || DURATION;
-            if (Math.abs(rMin - slotMinutes) < Math.min(DURATION, rDur)) {
-              throw new Error(
-                'Sorry, no tables are available for this time slot. Please contact the restaurant for assistance or try another time.'
-              );
-            }
-          }
         }
 
         // 5. Generate unique booking reference
@@ -603,7 +631,131 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
           }
         }
 
-        // 6. Create booking with assigned table
+        // 6. Handle Optional Advance Food Pre-Order
+        let createdOrder: {
+          orderNumber: string;
+          total: string;
+          itemsSummary: string;
+          items: { name: string; quantity: number; lineTotal: string }[];
+        } | null = null;
+
+        if (preOrderItems && preOrderItems.length > 0) {
+          const itemIds = preOrderItems.map((p) => p.menuItemId);
+          const menuItems = await tx.menuItem.findMany({
+            where: { id: { in: itemIds }, isPublished: true },
+            include: { variants: true },
+          });
+
+          const menuMap = new Map(menuItems.map((m) => [m.id, m]));
+          let subtotal = new Prisma.Decimal(0);
+          const orderItemsToCreate: {
+            menuItemId: string;
+            menuItemName: string;
+            variantName: string | null;
+            quantity: number;
+            unitPrice: Prisma.Decimal;
+            lineTotal: Prisma.Decimal;
+            specialInstructions: string | null;
+          }[] = [];
+
+          for (const reqItem of preOrderItems) {
+            const item = menuMap.get(reqItem.menuItemId);
+            if (!item || !item.isAvailable) continue;
+
+            let unitPrice = item.basePrice;
+            let variantName: string | null = null;
+
+            if (reqItem.variantName) {
+              const matchedVariant = item.variants.find((v) => v.name === reqItem.variantName);
+              if (matchedVariant) {
+                unitPrice = unitPrice.add(matchedVariant.priceModifier);
+                variantName = matchedVariant.name;
+              }
+            }
+
+            const lineTotal = unitPrice.mul(reqItem.quantity);
+            subtotal = subtotal.add(lineTotal);
+
+            orderItemsToCreate.push({
+              menuItemId: item.id,
+              menuItemName: item.name,
+              variantName,
+              quantity: reqItem.quantity,
+              unitPrice,
+              lineTotal,
+              specialInstructions: reqItem.specialInstructions || null,
+            });
+          }
+
+          if (orderItemsToCreate.length > 0) {
+            const taxRatePercent = settings?.taxRate ? Number(settings.taxRate) : 5;
+            const taxAmount = subtotal.mul(taxRatePercent).div(100);
+            const total = subtotal.add(taxAmount);
+
+            const now = new Date();
+            const year = String(now.getFullYear()).slice(-2);
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const rand4 = Math.floor(1000 + Math.random() * 9000);
+            const orderNumber = `SK-${year}${month}${day}-${rand4}`;
+
+            await tx.order.create({
+              data: {
+                orderNumber,
+                tableId: assignedTable.id,
+                source: OrderSource.WEBSITE,
+                status: OrderStatus.PENDING,
+                customerName: customerName.trim(),
+                customerPhone: customerPhone.trim(),
+                notes: `Advance Pre-Order for Table Reservation #${bookingReference} on ${bookingDate} at ${timeSlot}`,
+                subtotal,
+                taxAmount,
+                total,
+                orderItems: {
+                  create: orderItemsToCreate.map((oi) => ({
+                    menuItemId: oi.menuItemId,
+                    menuItemName: oi.menuItemName,
+                    variantName: oi.variantName,
+                    quantity: oi.quantity,
+                    unitPrice: oi.unitPrice,
+                    lineTotal: oi.lineTotal,
+                    specialInstructions: oi.specialInstructions,
+                  })),
+                },
+                paymentRecords: {
+                  create: {
+                    amount: total,
+                    method: PaymentMethod.CASH,
+                    status: PaymentStatus.PENDING,
+                  },
+                },
+              },
+            });
+
+            const itemsSummary = orderItemsToCreate
+              .map((oi) => `${oi.menuItemName} x${oi.quantity}`)
+              .join(', ');
+
+            createdOrder = {
+              orderNumber,
+              total: total.toFixed(2),
+              itemsSummary,
+              items: orderItemsToCreate.map((oi) => ({
+                name: oi.menuItemName,
+                quantity: oi.quantity,
+                lineTotal: oi.lineTotal.toFixed(2),
+              })),
+            };
+          }
+        }
+
+        // 7. Create booking record with assigned table and pre-order note
+        const preOrderNote = createdOrder
+          ? `[PRE-ORDER: Order #${createdOrder.orderNumber} (₹${createdOrder.total}) | ${createdOrder.itemsSummary}]`
+          : null;
+
+        const combinedStaffNotes = preOrderNote || null;
+
         const created = await tx.tableBooking.create({
           data: {
             bookingReference,
@@ -616,15 +768,21 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
             durationMinutes: DURATION,
             status: BookingStatus.PENDING,
             specialRequest: specialRequest?.trim() || null,
-            tableId: freeTable.id,
+            staffNotes: combinedStaffNotes,
+            tableId: assignedTable.id,
           },
           include: { table: true },
         });
 
-        return created;
+        return {
+          booking: created,
+          preOrder: createdOrder,
+        };
       },
       { maxWait: 10000, timeout: 20000 }
     );
+
+    const { booking: newBooking, preOrder: createdPreOrder } = transactionResult;
 
     // Send confirmation/receipt email if email is provided
     if (customerEmail?.trim()) {
@@ -645,6 +803,13 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
           tableNumber: newBooking.table?.tableNumber,
           specialRequest: newBooking.specialRequest,
           isConfirmed: false,
+          preOrder: createdPreOrder
+            ? {
+                orderNumber: createdPreOrder.orderNumber,
+                total: createdPreOrder.total,
+                items: createdPreOrder.items,
+              }
+            : undefined,
         });
       } catch (emailErr) {
         console.error('[Bookings:Email] Error sending receipt email:', emailErr);
@@ -652,6 +817,7 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
     }
 
     safeRevalidatePath('/dashboard/bookings');
+    safeRevalidatePath('/dashboard/orders');
 
     return {
       success: true,
@@ -672,6 +838,7 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
         tableNumber: newBooking.table?.tableNumber || null,
         tableOnlineBookingEnabled: newBooking.table?.onlineBookingEnabled ?? null,
         createdAt: newBooking.createdAt.toISOString(),
+        preOrder: createdPreOrder || null,
       },
     };
   } catch (err: unknown) {

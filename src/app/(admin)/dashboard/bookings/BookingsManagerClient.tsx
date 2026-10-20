@@ -514,6 +514,11 @@ export function BookingsManagerClient({
                               </span>
                             )}
                           </div>
+                          {b.staffNotes?.includes('[PRE-ORDER') && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md mt-1 shadow-2xs">
+                              🍽️ Food Pre-Order Included
+                            </span>
+                          )}
                         </td>
 
                         {/* Date & Time */}

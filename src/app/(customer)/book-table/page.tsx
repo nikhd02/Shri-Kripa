@@ -9,6 +9,7 @@ import type { Metadata } from 'next';
 import { CalendarDays, Clock, Phone, MapPin, Sparkles, UtensilsCrossed, ShieldCheck } from 'lucide-react';
 import { db } from '@/lib/db';
 import { ScrollReveal } from '@/components/ui/scroll-reveal';
+import { getCachedPublicMenuCategories } from '@/server/queries/publicMenu';
 import { BookTableClient } from './BookTableClient';
 
 export const metadata: Metadata = {
@@ -21,6 +22,13 @@ export const dynamic = 'force-dynamic';
 
 export default async function BookTablePage() {
   const settings = await db.restaurantSettings.findFirst();
+
+  let menuCategories: Awaited<ReturnType<typeof getCachedPublicMenuCategories>> = [];
+  try {
+    menuCategories = await getCachedPublicMenuCategories();
+  } catch (err) {
+    console.error('[BookTablePage] Error fetching menu categories for pre-order:', err);
+  }
 
   return (
     <div className="min-h-screen bg-[#FFF8F0] pb-24">
@@ -45,7 +53,7 @@ export default async function BookTablePage() {
             </p>
 
             <p className="text-[#FFF8F0]/90 text-sm sm:text-base leading-relaxed max-w-xl mx-auto">
-              Experience authentic pure vegetarian North Indian culinary delights with loved ones. Live seat availability, zero advance fees, and instant confirmation.
+              Experience authentic pure vegetarian North Indian culinary delights with loved ones. Live seat availability, zero advance fees, optional advance food pre-ordering, and instant confirmation.
             </p>
           </ScrollReveal>
         </div>
@@ -61,6 +69,8 @@ export default async function BookTablePage() {
               operatingHours={settings?.openingHours || '11:00 AM - 11:00 PM'}
               restaurantPhone={settings?.phone1 || '9415268463'}
               googleMapsUrl={settings?.googleMapsUrl || null}
+              menuCategories={menuCategories}
+              taxRate={settings?.taxRate ? Number(settings.taxRate) : 5}
             />
           </div>
 

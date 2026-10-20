@@ -471,6 +471,11 @@ export interface BookingEmailPayload {
   tableNumber?: string | null;
   specialRequest?: string | null;
   isConfirmed?: boolean;
+  preOrder?: {
+    orderNumber: string;
+    total: string | number;
+    items: { name: string; quantity: number; lineTotal: string | number }[];
+  };
 }
 
 /**
@@ -559,6 +564,35 @@ export async function sendTableBookingEmail(payload: BookingEmailPayload) {
                         : ''
                     }
                   </table>
+
+                  ${
+                    payload.preOrder
+                      ? `
+                  <div style="margin-top: 16px; background-color: #ffffff; border-radius: 12px; border: 1px solid #ebdcd0; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="background-color: #7B1D1D; color: #ffffff; padding: 10px 16px; font-size: 13px; font-weight: 700;">
+                      🍽️ Advance Food Pre-Order (Order #${payload.preOrder.orderNumber})
+                    </div>
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 12px 16px;">
+                      ${payload.preOrder.items
+                        .map(
+                          (it) => `
+                        <tr>
+                          <td style="font-size: 13px; color: #241512; padding: 5px 0;"><strong>${it.name}</strong> × ${it.quantity}</td>
+                          <td style="font-size: 13px; color: #7B1D1D; font-weight: 600; text-align: right; padding: 5px 0;">₹${Number(it.lineTotal).toFixed(2)}</td>
+                        </tr>`
+                        )
+                        .join('')}
+                      <tr>
+                        <td style="font-size: 14px; font-weight: 700; color: #241512; padding-top: 10px; border-top: 1px dashed #e5e7eb;">Total Pre-Order Amount:</td>
+                        <td style="font-size: 14px; font-weight: 800; color: #7B1D1D; text-align: right; padding-top: 10px; border-top: 1px dashed #e5e7eb;">₹${Number(payload.preOrder.total).toFixed(2)}</td>
+                      </tr>
+                    </table>
+                    <div style="padding: 8px 16px; background-color: #FFF8F0; font-size: 11px; color: #6b5c58; border-top: 1px solid #ebdcd0;">
+                      Payment will be collected at restaurant during dining. Dishes will be queued for your arrival time.
+                    </div>
+                  </div>`
+                      : ''
+                  }
 
                   <div style="margin-top: 16px; padding: 12px; background-color: #fffbeb; border-radius: 8px; border: 1px solid #fef3c7; font-size: 12px; color: #92400e;">
                     ℹ️ <strong>Reservation Policy:</strong> Tables are reserved without advance fee and held up to 15 minutes past your reserved time. If you are delayed or need to reschedule, please call us at +91 94152 68463.
