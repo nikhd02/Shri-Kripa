@@ -26,6 +26,7 @@ export interface OrderEmailPayload {
   total: string | number;
   paymentId?: string | null;
   paymentMethod?: string;
+  paymentUrl?: string | null;
 }
 
 function getMailTransporter() {
@@ -144,6 +145,24 @@ export async function sendOrderReceivedEmail(payload: OrderEmailPayload) {
                     </thead>
                     <tbody>${itemsHtml}</tbody>
                   </table>
+                  ${
+                    payload.paymentUrl
+                      ? `
+                  <!-- Payment Link CTA -->
+                  <div style="margin-top: 24px; background-color: #fdfaf7; border: 2px dashed #C9A84C; border-radius: 14px; padding: 20px 16px; text-align: center;">
+                    <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: 700; color: #7B1D1D; text-transform: uppercase; letter-spacing: 0.5px;">
+                      Complete Online Payment to Start Preparation
+                    </p>
+                    <a href="${payload.paymentUrl}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #7B1D1D 0%, #521212 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 50px; font-weight: 700; font-size: 15px; border: 2px solid #C9A84C; box-shadow: 0 4px 14px rgba(123, 29, 29, 0.25);">
+                      💳 Click to Pay Online (₹${Number(payload.total).toFixed(2)})
+                    </a>
+                    <p style="margin: 10px 0 0 0; font-size: 11px; color: #6b5c58;">
+                      Pay securely via UPI (GPay, PhonePe, Paytm), Credit/Debit Card, or NetBanking.<br/>
+                      Once payment is completed, the kitchen will immediately begin preparing your meal.
+                    </p>
+                  </div>`
+                      : ''
+                  }
                 </td>
               </tr>
 
@@ -471,6 +490,7 @@ export interface BookingEmailPayload {
   tableNumber?: string | null;
   specialRequest?: string | null;
   isConfirmed?: boolean;
+  paymentUrl?: string | null;
   preOrder?: {
     orderNumber: string;
     total: string | number;
@@ -587,9 +607,23 @@ export async function sendTableBookingEmail(payload: BookingEmailPayload) {
                         <td style="font-size: 14px; font-weight: 800; color: #7B1D1D; text-align: right; padding-top: 10px; border-top: 1px dashed #e5e7eb;">₹${Number(payload.preOrder.total).toFixed(2)}</td>
                       </tr>
                     </table>
+                    
+                    ${
+                      payload.paymentUrl
+                        ? `
+                    <div style="padding: 16px; background-color: #fdfaf7; border-top: 1px solid #ebdcd0; text-align: center;">
+                      <a href="${payload.paymentUrl}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #7B1D1D 0%, #521212 100%); color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 50px; font-weight: 700; font-size: 14px; border: 2px solid #C9A84C; box-shadow: 0 4px 12px rgba(123, 29, 29, 0.2);">
+                        💳 Pay Food Bill Online (₹${Number(payload.preOrder.total).toFixed(2)})
+                      </a>
+                      <p style="margin: 6px 0 0 0; font-size: 11px; color: #6b5c58;">
+                        Pay online now so our chefs can prepare your meal for your arrival.
+                      </p>
+                    </div>`
+                        : `
                     <div style="padding: 8px 16px; background-color: #FFF8F0; font-size: 11px; color: #6b5c58; border-top: 1px solid #ebdcd0;">
                       Payment will be collected at restaurant during dining. Dishes will be queued for your arrival time.
-                    </div>
+                    </div>`
+                    }
                   </div>`
                       : ''
                   }

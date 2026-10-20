@@ -33,6 +33,13 @@ function safeRevalidatePath(path: string) {
   }
 }
 
+function getAppBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'https://shri-kripa.vercel.app';
+}
+
 export interface BookingSlot {
   time: string; // e.g. "12:30"
   label: string; // e.g. "12:30 PM"
@@ -889,9 +896,20 @@ export async function updateBookingStatusAction(rawInput: unknown): Promise<{
       include: { table: true },
     });
 
-    // If status became CONFIRMED and customer has email, send Confirmation Email!
+    // If status became CONFIRMED and customer has email, send Confirmation Email with Payment Link!
     if (status === BookingStatus.CONFIRMED && updated.customerEmail) {
       try {
+        const linkedOrder = await db.order.findFirst({
+          where: { notes: { contains: updated.bookingReference } },
+          include: {
+            orderItems: true,
+            paymentRecords: { orderBy: { createdAt: 'desc' }, take: 1 },
+          },
+        });
+
+        const isOrderPaid = linkedOrder?.paymentRecords[0]?.status === PaymentStatus.COMPLETED;
+        const paymentUrl = linkedOrder && !isOrderPaid ? `${getAppBaseUrl()}/pay/${linkedOrder.id}` : undefined;
+
         await sendTableBookingEmail({
           bookingReference: updated.bookingReference,
           customerName: updated.customerName,
@@ -908,6 +926,18 @@ export async function updateBookingStatusAction(rawInput: unknown): Promise<{
           tableNumber: updated.table?.tableNumber,
           specialRequest: updated.specialRequest,
           isConfirmed: true,
+          paymentUrl,
+          preOrder: linkedOrder
+            ? {
+                orderNumber: linkedOrder.orderNumber,
+                total: linkedOrder.total.toString(),
+                items: linkedOrder.orderItems.map((oi) => ({
+                  name: oi.menuItemName,
+                  quantity: oi.quantity,
+                  lineTotal: oi.lineTotal.toString(),
+                })),
+              }
+            : undefined,
         });
       } catch (emailErr) {
         console.error('[Bookings:StaffConfirmEmail] Error:', emailErr);

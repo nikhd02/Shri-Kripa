@@ -37,6 +37,13 @@ function safeRevalidatePath(path: string) {
   }
 }
 
+function getAppBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'https://shri-kripa.vercel.app';
+}
+
 // Memory store for recent idempotency keys with in-flight concurrency protection
 type IdempotencyResult = OrderActionResult<{
   orderId: string;
@@ -462,13 +469,28 @@ export async function updateOrderStatusAction(
     };
   }
 
+  // Strict business rule: An order can ONLY be sent to kitchen (PREPARING) if payment is completed!
+  if (nextStatus === OrderStatus.PREPARING) {
+    const latestPayment = await db.paymentRecord.findFirst({
+      where: { orderId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!latestPayment || latestPayment.status !== PaymentStatus.COMPLETED) {
+      return {
+        success: false,
+        error: 'Cannot send order to kitchen until online payment is completed by customer.',
+      };
+    }
+  }
+
   try {
     const updated = await db.order.update({
       where: { id: orderId },
       data: { status: nextStatus },
     });
 
-    // When admin/staff confirms the order (ACCEPTED), send confirmation email to customer
+    // When admin/staff confirms the order (ACCEPTED), send confirmation email with payment link to customer
     if (nextStatus === OrderStatus.ACCEPTED) {
       try {
         const fullOrder = await db.order.findUnique({
@@ -477,17 +499,20 @@ export async function updateOrderStatusAction(
             orderItems: true,
             table: true,
             customer: true,
+            paymentRecords: { orderBy: { createdAt: 'desc' }, take: 1 },
           },
         });
 
-        const customerEmail = fullOrder?.customer?.email;
+        const customerEmail = fullOrder?.customer?.email || fullOrder?.notes?.match(/\[Email:\s*([^\]]+)\]/i)?.[1];
         if (customerEmail && fullOrder) {
+          const isPaid = fullOrder.paymentRecords[0]?.status === PaymentStatus.COMPLETED;
           await sendOrderConfirmedByStaffEmail({
             orderNumber: fullOrder.orderNumber,
             customerName: fullOrder.customerName || fullOrder.customer?.name || 'Valued Guest',
-            customerEmail,
+            customerEmail: customerEmail.trim().toLowerCase(),
             customerPhone: fullOrder.customerPhone || fullOrder.customer?.phone,
             tableNumber: fullOrder.table?.tableNumber,
+            paymentUrl: !isPaid ? `${getAppBaseUrl()}/pay/${fullOrder.id}` : undefined,
             items: fullOrder.orderItems.map((oi) => ({
               name: oi.menuItemName,
               variantName: oi.variantName,

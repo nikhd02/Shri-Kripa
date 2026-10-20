@@ -479,15 +479,31 @@ export function OrderManagerClient({ initialOrders }: OrderManagerClientProps) {
                         >
                           Cancel
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleAdvanceStatus(order.id, OrderStatus.PREPARING)}
-                          disabled={isPending}
-                          className="px-3.5 py-1.5 rounded-lg bg-purple-700 text-white hover:bg-purple-800 text-xs font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
-                        >
-                          <UtensilsCrossed className="w-3.5 h-3.5" />
-                          Send to Kitchen
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          {order.paymentStatus !== PaymentStatus.COMPLETED && (
+                            <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                              ⏳ Awaiting Payment
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleAdvanceStatus(order.id, OrderStatus.PREPARING)}
+                            disabled={isPending || order.paymentStatus !== PaymentStatus.COMPLETED}
+                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 ${
+                              order.paymentStatus === PaymentStatus.COMPLETED
+                                ? 'bg-purple-700 text-white hover:bg-purple-800 cursor-pointer'
+                                : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60'
+                            }`}
+                            title={
+                              order.paymentStatus === PaymentStatus.COMPLETED
+                                ? 'Payment verified. Click to send to kitchen.'
+                                : 'Cannot send to kitchen until customer completes payment.'
+                            }
+                          >
+                            <UtensilsCrossed className="w-3.5 h-3.5" />
+                            Send to Kitchen
+                          </button>
+                        </div>
                       </>
                     )}
 
