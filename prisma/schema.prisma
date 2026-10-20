@@ -127,15 +127,16 @@ model MenuAddOn {
 // ---------------------------------------------------------------------------
 
 model RestaurantTable {
-  id          String         @id @default(cuid())
-  tableNumber String         @unique @db.VarChar(20)
-  capacity    Int
-  qrToken     String         @unique @default(cuid())
-  isActive    Boolean        @default(true)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  orders      Order[]
-  bookings    TableBooking[]
+  id                   String         @id @default(cuid())
+  tableNumber          String         @unique @db.VarChar(20)
+  capacity             Int
+  qrToken              String         @unique @default(cuid())
+  isActive             Boolean        @default(true)
+  onlineBookingEnabled Boolean        @default(false)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  orders               Order[]
+  bookings             TableBooking[]
 
   @@map("restaurant_tables")
 }

@@ -17,6 +17,14 @@ import {
 } from '@/lib/validations/booking';
 import { sendTableBookingEmail } from '@/lib/email';
 
+function safeRevalidatePath(path: string) {
+  try {
+    revalidatePath(path);
+  } catch {
+    // Gracefully ignore when called outside Next.js request context
+  }
+}
+
 export interface BookingSlot {
   time: string; // e.g. "12:30"
   label: string; // e.g. "12:30 PM"
@@ -40,7 +48,21 @@ export interface BookingDTO {
   staffNotes: string | null;
   tableId: string | null;
   tableNumber: string | null;
+  tableOnlineBookingEnabled: boolean | null;
   createdAt: string;
+}
+
+function parseDateAsUtc(dateStr: string): Date {
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    return new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+  }
+  const fallback = new Date(dateStr);
+  fallback.setUTCHours(0, 0, 0, 0);
+  return fallback;
 }
 
 /**
@@ -126,6 +148,7 @@ export async function getAvailableBookingSlotsAction(
   slots?: BookingSlot[];
   operatingHoursText?: string;
   error?: string;
+  noOnlineTables?: boolean;
 }> {
   try {
     if (!dateString || isNaN(Date.parse(dateString))) {
@@ -146,29 +169,38 @@ export async function getAvailableBookingSlotsAction(
       };
     }
 
-    // Fetch active tables
-    const activeTables = await db.restaurantTable.findMany({
-      where: { isActive: true },
+    // Fetch active tables enabled for online booking
+    const onlineTables = await db.restaurantTable.findMany({
+      where: {
+        isActive: true,
+        onlineBookingEnabled: true,
+      },
       orderBy: { capacity: 'asc' },
     });
 
-    if (activeTables.length === 0) {
+    if (onlineTables.length === 0) {
       return {
-        success: false,
-        error: 'No active dining tables are configured. Please contact restaurant reception.',
+        success: true,
+        slots: [],
+        noOnlineTables: true,
+        error:
+          'Online reservations are currently unavailable. Please contact the restaurant for assistance or try another time.',
+        operatingHoursText: hours.text,
       };
     }
 
-    const targetDate = new Date(dateString);
-    targetDate.setHours(0, 0, 0, 0);
+    const targetDate = parseDateAsUtc(dateString);
 
-    // Fetch existing confirmed or pending bookings for that date
+    // Fetch existing active bookings (PENDING & CONFIRMED) that occupy tables on that date
     const existingBookings = await db.tableBooking.findMany({
       where: {
         bookingDate: targetDate,
         status: { in: [BookingStatus.CONFIRMED, BookingStatus.PENDING] },
       },
     });
+
+    // Filter tables capable of accommodating this party size
+    const eligibleTables = onlineTables.filter((t) => t.capacity >= guestCount);
 
     // Generate slots at 30-min intervals. Last slot must leave at least 60 mins before close.
     const slots: BookingSlot[] = [];
@@ -196,6 +228,19 @@ export async function getAvailableBookingSlotsAction(
         continue;
       }
 
+      // If no online table has enough capacity for this party size
+      if (eligibleTables.length === 0) {
+        slots.push({
+          time,
+          label,
+          available: false,
+          reason:
+            'Sorry, no tables are available for this time slot. Please contact the restaurant for assistance or try another time.',
+          remainingCapacity: 0,
+        });
+        continue;
+      }
+
       // Check which tables are occupied in the interval [minute - 89, minute + 89]
       const overlappingBookings = existingBookings.filter((b) => {
         const bMin = timeStringToMinutes(b.timeSlot);
@@ -207,24 +252,19 @@ export async function getAvailableBookingSlotsAction(
         overlappingBookings.map((b) => b.tableId).filter(Boolean) as string[]
       );
 
-      const bookedGuests = overlappingBookings.reduce((sum, b) => sum + b.guestCount, 0);
-      const totalCapacity = activeTables.reduce((sum, t) => sum + t.capacity, 0);
-      const remainingCapacity = Math.max(0, totalCapacity - bookedGuests);
+      // Free eligible tables that can accommodate this party size and are not booked
+      const freeEligibleTables = eligibleTables.filter((t) => !bookedTableIds.has(t.id));
 
-      // Free tables that are not occupied during this slot
-      const freeTables = activeTables.filter((t) => !bookedTableIds.has(t.id));
-
-      // Check if there is a single table or enough unassigned capacity that fits the party
-      const hasFittingTable = freeTables.some((t) => t.capacity >= guestCount);
-      const isCapacitySufficient = remainingCapacity >= guestCount;
-
-      const isAvailable = hasFittingTable && isCapacitySufficient;
+      const isAvailable = freeEligibleTables.length > 0;
+      const remainingCapacity = freeEligibleTables.reduce((sum, t) => sum + t.capacity, 0);
 
       slots.push({
         time,
         label,
         available: isAvailable,
-        reason: !isAvailable ? (remainingCapacity < guestCount ? 'Fully Booked' : 'No Table of this Size Free') : undefined,
+        reason: !isAvailable
+          ? 'Sorry, no tables are available for this time slot. Please contact the restaurant for assistance or try another time.'
+          : undefined,
         remainingCapacity,
       });
     }
@@ -240,6 +280,22 @@ export async function getAvailableBookingSlotsAction(
   }
 }
 
+// In-process concurrency lock to serialize simultaneous table allocations
+let lockPromise: Promise<void> = Promise.resolve();
+
+async function acquireBookingLock(): Promise<() => void> {
+  let release!: () => void;
+  const newLock = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const currentLock = lockPromise;
+  lockPromise = currentLock.then(() => newLock);
+  await currentLock;
+  return () => {
+    release();
+  };
+}
+
 /**
  * Public Action: Create a Table Booking
  */
@@ -249,14 +305,16 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
   error?: string;
   fieldErrors?: Record<string, string[]>;
 }> {
-  const parsed = createBookingSchema.safeParse(rawInput);
-  if (!parsed.success) {
-    return {
-      success: false,
-      error: 'Please check the booking details entered.',
-      fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
-    };
-  }
+  const releaseLock = await acquireBookingLock();
+  try {
+    const parsed = createBookingSchema.safeParse(rawInput);
+    if (!parsed.success) {
+      return {
+        success: false,
+        error: 'Please check the booking details entered.',
+        fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+      };
+    }
 
   const {
     customerName,
@@ -268,22 +326,24 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
     specialRequest,
   } = parsed.data;
 
-  const targetDate = new Date(bookingDate);
-  targetDate.setHours(0, 0, 0, 0);
+  const targetDate = parseDateAsUtc(bookingDate);
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
 
   if (targetDate < today) {
     return { success: false, error: 'Cannot book a table for a past date.' };
   }
 
-  try {
-    // Execute atomic transaction with concurrency check
-    const newBooking = await db.$transaction(
-      async (tx) => {
-        // 1. Verify operating hours
+  // Execute atomic transaction with concurrency check
+  const newBooking = await db.$transaction(
+    async (tx) => {
+        // 1. Verify operating hours and acquire row lock on settings to serialize concurrent reservations
         const settings = await tx.restaurantSettings.findFirst();
+        if (settings) {
+          await tx.$queryRaw`SELECT id FROM restaurant_settings WHERE id = ${settings.id} FOR UPDATE`;
+        }
+
         const hours = parseOperatingHours(settings?.openingHours);
 
         if (!hours.valid) {
@@ -295,14 +355,20 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
           throw new Error(`The selected time slot is outside operating hours (${hours.text}).`);
         }
 
-        // 2. Fetch active tables
-        const activeTables = await tx.restaurantTable.findMany({
-          where: { isActive: true },
+        // 2. Fetch active tables enabled for online booking with capacity >= guestCount
+        const eligibleTables = await tx.restaurantTable.findMany({
+          where: {
+            isActive: true,
+            onlineBookingEnabled: true,
+            capacity: { gte: guestCount },
+          },
           orderBy: { capacity: 'asc' },
         });
 
-        if (activeTables.length === 0) {
-          throw new Error('No dining tables are currently active.');
+        if (eligibleTables.length === 0) {
+          throw new Error(
+            'Sorry, no tables are available for this time slot. Please contact the restaurant for assistance or try another time.'
+          );
         }
 
         // 3. Find overlapping bookings for this time window (90 mins duration)
@@ -324,19 +390,40 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
           overlappingBookings.map((b) => b.tableId).filter(Boolean) as string[]
         );
 
-        const bookedGuests = overlappingBookings.reduce((sum, b) => sum + b.guestCount, 0);
-        const totalCapacity = activeTables.reduce((sum, t) => sum + t.capacity, 0);
+        // 4. Select the best available table (smallest capacity that fits the party)
+        const freeTable = eligibleTables.find((t) => !bookedTableIds.has(t.id));
 
-        if (totalCapacity - bookedGuests < guestCount) {
-          throw new Error('Sorry, all tables are fully booked for this time slot. Please choose another time.');
+        if (!freeTable) {
+          throw new Error(
+            'Sorry, no tables are available for this time slot. Please contact the restaurant for assistance or try another time.'
+          );
         }
 
-        // 4. Select the best available table (smallest capacity that fits the party)
-        const availableTables = activeTables.filter((t) => !bookedTableIds.has(t.id));
-        const suitableTable = availableTables.find((t) => t.capacity >= guestCount) || null;
+        // Acquire exclusive row lock on the chosen table to serialize concurrent bookings
+        await tx.restaurantTable.update({
+          where: { id: freeTable.id },
+          data: { updatedAt: new Date() },
+        });
 
-        if (!suitableTable && availableTables.length === 0) {
-          throw new Error('No suitable dining table is free for this time slot. Please pick another slot.');
+        // Re-verify with a Current Read (LOCK IN SHARE MODE) so InnoDB reads latest committed bookings
+        const recentOverlaps = await tx.$queryRaw<{ id: string; timeSlot: string; durationMinutes: number }[]>`
+          SELECT id, timeSlot, durationMinutes FROM table_bookings
+          WHERE bookingDate = ${targetDate}
+            AND tableId = ${freeTable.id}
+            AND status IN ('CONFIRMED', 'PENDING')
+          LOCK IN SHARE MODE
+        `;
+
+        if (recentOverlaps && recentOverlaps.length > 0) {
+          for (const overlap of recentOverlaps) {
+            const rMin = timeStringToMinutes(overlap.timeSlot);
+            const rDur = overlap.durationMinutes || DURATION;
+            if (Math.abs(rMin - slotMinutes) < Math.min(DURATION, rDur)) {
+              throw new Error(
+                'Sorry, no tables are available for this time slot. Please contact the restaurant for assistance or try another time.'
+              );
+            }
+          }
         }
 
         // 5. Generate unique booking reference
@@ -353,7 +440,7 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
           }
         }
 
-        // 6. Create booking
+        // 6. Create booking with assigned table
         const created = await tx.tableBooking.create({
           data: {
             bookingReference,
@@ -366,14 +453,14 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
             durationMinutes: DURATION,
             status: BookingStatus.PENDING,
             specialRequest: specialRequest?.trim() || null,
-            tableId: suitableTable?.id || null,
+            tableId: freeTable.id,
           },
           include: { table: true },
         });
 
         return created;
       },
-      { maxWait: 5000, timeout: 15000 }
+      { maxWait: 10000, timeout: 20000 }
     );
 
     // Send confirmation/receipt email if email is provided
@@ -401,7 +488,7 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
       }
     }
 
-    revalidatePath('/dashboard/bookings');
+    safeRevalidatePath('/dashboard/bookings');
 
     return {
       success: true,
@@ -420,6 +507,7 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
         staffNotes: newBooking.staffNotes,
         tableId: newBooking.tableId,
         tableNumber: newBooking.table?.tableNumber || null,
+        tableOnlineBookingEnabled: newBooking.table?.onlineBookingEnabled ?? null,
         createdAt: newBooking.createdAt.toISOString(),
       },
     };
@@ -430,6 +518,8 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
       success: false,
       error: message,
     };
+  } finally {
+    releaseLock();
   }
 }
 
@@ -494,7 +584,7 @@ export async function updateBookingStatusAction(rawInput: unknown): Promise<{
       }
     }
 
-    revalidatePath('/dashboard/bookings');
+    safeRevalidatePath('/dashboard/bookings');
     return { success: true };
   } catch (err: unknown) {
     console.error('[Bookings:UpdateStatus] Error:', err);
@@ -515,7 +605,7 @@ export async function deleteBookingAction(bookingId: string): Promise<{
     await db.tableBooking.delete({
       where: { id: bookingId },
     });
-    revalidatePath('/dashboard/bookings');
+    safeRevalidatePath('/dashboard/bookings');
     return { success: true };
   } catch (err: unknown) {
     console.error('[Bookings:Delete] Error:', err);

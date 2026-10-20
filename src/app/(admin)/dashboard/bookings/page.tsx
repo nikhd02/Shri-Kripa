@@ -23,14 +23,13 @@ export const dynamic = 'force-dynamic';
 export default async function AdminBookingsPage() {
   await requireAuth([Role.ADMIN, Role.MANAGER, Role.STAFF]);
 
-  const [rawBookings, activeTables] = await Promise.all([
+  const [rawBookings, allTables] = await Promise.all([
     db.tableBooking.findMany({
       orderBy: [{ bookingDate: 'desc' }, { timeSlot: 'asc' }],
       include: { table: true },
       take: 200,
     }),
     db.restaurantTable.findMany({
-      where: { isActive: true },
       orderBy: { tableNumber: 'asc' },
     }),
   ]);
@@ -50,20 +49,23 @@ export default async function AdminBookingsPage() {
     staffNotes: b.staffNotes,
     tableId: b.tableId,
     tableNumber: b.table?.tableNumber || null,
+    tableOnlineBookingEnabled: b.table?.onlineBookingEnabled ?? null,
     createdAt: b.createdAt.toISOString(),
   }));
 
-  const serializedTables = activeTables.map((t) => ({
+  const serializedTables = allTables.map((t) => ({
     id: t.id,
     tableNumber: t.tableNumber,
     capacity: t.capacity,
+    isActive: t.isActive,
+    onlineBookingEnabled: t.onlineBookingEnabled,
   }));
 
   return (
     <div className="space-y-6">
       <BookingsManagerClient
         initialBookings={serializedBookings}
-        availableTables={serializedTables}
+        initialTables={serializedTables}
       />
     </div>
   );

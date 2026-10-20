@@ -60,6 +60,7 @@ export default async function BookTablePage() {
             <BookTableClient
               operatingHours={settings?.openingHours || '11:00 AM - 11:00 PM'}
               restaurantPhone={settings?.phone1 || '9415268463'}
+              googleMapsUrl={settings?.googleMapsUrl || null}
             />
           </div>
 

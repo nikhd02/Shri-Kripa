@@ -18,6 +18,8 @@ import {
   Sparkles,
   User,
   ArrowRight,
+  Phone,
+  MapPin,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,9 +32,14 @@ import {
 interface BookTableClientProps {
   operatingHours: string;
   restaurantPhone: string;
+  googleMapsUrl?: string | null;
 }
 
-export function BookTableClient({ operatingHours, restaurantPhone }: BookTableClientProps) {
+export function BookTableClient({
+  operatingHours,
+  restaurantPhone,
+  googleMapsUrl,
+}: BookTableClientProps) {
   // Today in YYYY-MM-DD
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -40,6 +47,7 @@ export function BookTableClient({ operatingHours, restaurantPhone }: BookTableCl
   const [bookingDate, setBookingDate] = useState<string>(todayStr);
   const [guestCount, setGuestCount] = useState<number>(2);
   const [selectedSlot, setSelectedSlot] = useState<string>('');
+  const [selectedUnavailableSlot, setSelectedUnavailableSlot] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [customerEmail, setCustomerEmail] = useState<string>('');
@@ -63,12 +71,16 @@ export function BookTableClient({ operatingHours, restaurantPhone }: BookTableCl
       setIsLoadingSlots(true);
       setSlotsError(null);
       setSelectedSlot('');
+      setSelectedUnavailableSlot(null);
 
       try {
         const res = await getAvailableBookingSlotsAction(bookingDate, guestCount);
         if (isCancelled) return;
         if (res.success && res.slots) {
           setSlots(res.slots);
+          if (res.error) {
+            setSlotsError(res.error);
+          }
         } else {
           setSlots([]);
           setSlotsError(res.error || 'Could not load slots for this date.');
@@ -246,9 +258,35 @@ export function BookTableClient({ operatingHours, restaurantPhone }: BookTableCl
       </div>
 
       {submitError && (
-        <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          <span>{submitError}</span>
+        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-900 space-y-3">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs sm:text-sm font-bold">{submitError}</p>
+              <p className="text-[11px] text-red-700 mt-0.5">
+                Please contact our reception desk for immediate reservation assistance.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-red-200">
+            <Button asChild size="sm" className="bg-[#7B1D1D] hover:bg-[#521212] text-white text-xs h-8">
+              <Link href="/contact">Contact Restaurant</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm" className="border-red-300 text-[#7B1D1D] hover:bg-white text-xs h-8">
+              <a href={`tel:${restaurantPhone}`}>
+                <Phone className="w-3 h-3 mr-1.5" />
+                Call +91 {restaurantPhone}
+              </a>
+            </Button>
+            {googleMapsUrl && (
+              <Button asChild variant="ghost" size="sm" className="text-[#7B1D1D] hover:bg-white/80 text-xs h-8">
+                <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer">
+                  <MapPin className="w-3 h-3 mr-1.5" />
+                  Get Directions
+                </a>
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
@@ -322,46 +360,115 @@ export function BookTableClient({ operatingHours, restaurantPhone }: BookTableCl
             <div className="w-6 h-6 border-2 border-[#7B1D1D] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
             <p className="text-xs text-gray-600">Checking live table availability & capacity...</p>
           </div>
-        ) : slotsError ? (
-          <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold">{slotsError}</p>
-              <p className="text-[11px] text-amber-700 mt-0.5">
-                Please try another date or call <strong>+91 {restaurantPhone}</strong> for telephone reservations.
-              </p>
+        ) : slots.length === 0 ? (
+          <div className="p-5 rounded-2xl bg-amber-50/90 border border-amber-300 text-amber-950 space-y-3">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs sm:text-sm font-bold text-[#7B1D1D]">
+                  {slotsError || 'Online reservations are currently unavailable. Please contact the restaurant for assistance.'}
+                </p>
+                <p className="text-[11px] text-amber-800 mt-0.5">
+                  Tables can be reserved via phone call with our reception team.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-amber-200">
+              <Button asChild size="sm" className="bg-[#7B1D1D] hover:bg-[#521212] text-white font-bold text-xs h-8">
+                <Link href="/contact">Contact Restaurant</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="border-[#C9A84C]/80 text-[#7B1D1D] hover:bg-white text-xs h-8">
+                <a href={`tel:${restaurantPhone}`}>
+                  <Phone className="w-3 h-3 mr-1.5" />
+                  Call +91 {restaurantPhone}
+                </a>
+              </Button>
+              {googleMapsUrl && (
+                <Button asChild variant="ghost" size="sm" className="text-[#7B1D1D] hover:bg-white/80 text-xs h-8">
+                  <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer">
+                    <MapPin className="w-3 h-3 mr-1.5" />
+                    Get Directions
+                  </a>
+                </Button>
+              )}
             </div>
           </div>
-        ) : slots.length === 0 ? (
-          <p className="text-xs text-gray-500 italic p-4 bg-gray-50 rounded-xl">
-            No time slots configured for this date.
-          </p>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-            {slots.map((slot) => {
-              const isSelected = selectedSlot === slot.time;
-              return (
-                <button
-                  key={slot.time}
-                  type="button"
-                  disabled={!slot.available}
-                  onClick={() => setSelectedSlot(slot.time)}
-                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer relative ${
-                    isSelected
-                      ? 'bg-[#7B1D1D] text-white border-[#7B1D1D] shadow-md ring-2 ring-[#C9A84C]'
-                      : slot.available
-                      ? 'bg-[#FFF8F0] hover:bg-[#faeedd] border-[#C9A84C]/40 text-[#241512]'
-                      : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed opacity-60'
-                  }`}
-                  title={slot.reason || (slot.available ? `${slot.remainingCapacity} seats free` : 'Unavailable')}
-                >
-                  <p className="text-xs font-bold">{slot.label}</p>
-                  <p className="text-[9px] mt-0.5 opacity-80">
-                    {slot.available ? 'Available' : 'Booked'}
-                  </p>
-                </button>
-              );
-            })}
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+              {slots.map((slot) => {
+                const isSelected = selectedSlot === slot.time;
+                const isUnavailableClicked = selectedUnavailableSlot === slot.time;
+
+                return (
+                  <button
+                    key={slot.time}
+                    type="button"
+                    onClick={() => {
+                      if (slot.available) {
+                        setSelectedSlot(slot.time);
+                        setSelectedUnavailableSlot(null);
+                      } else {
+                        setSelectedSlot('');
+                        setSelectedUnavailableSlot(slot.time);
+                      }
+                    }}
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer relative ${
+                      isSelected
+                        ? 'bg-[#7B1D1D] text-white border-[#7B1D1D] shadow-md ring-2 ring-[#C9A84C]'
+                        : slot.available
+                        ? 'bg-[#FFF8F0] hover:bg-[#faeedd] border-[#C9A84C]/40 text-[#241512]'
+                        : isUnavailableClicked
+                        ? 'bg-amber-100 border-amber-400 text-amber-900 ring-2 ring-amber-500'
+                        : 'bg-gray-100 border-gray-200 text-gray-400 hover:border-gray-300'
+                    }`}
+                    title={slot.reason || (slot.available ? `${slot.remainingCapacity} seats free` : 'Unavailable')}
+                  >
+                    <p className="text-xs font-bold">{slot.label}</p>
+                    <p className="text-[9px] mt-0.5 opacity-80">
+                      {slot.available ? 'Available' : 'Booked'}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Display assistance banner when user clicked an unavailable slot or if all slots are unavailable */}
+            {(selectedUnavailableSlot || !slots.some((s) => s.available)) && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/90 border border-amber-300 text-amber-950 space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs sm:text-sm font-bold text-[#7B1D1D]">
+                      Sorry, no tables are available for this time slot. Please contact the restaurant for assistance or try another time.
+                    </p>
+                    <p className="text-[11px] text-amber-800 mt-0.5">
+                      Our front-desk team can assist with waitlist availability or adjacent seating.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-amber-200">
+                  <Button asChild size="sm" className="bg-[#7B1D1D] hover:bg-[#521212] text-white font-bold text-xs h-8">
+                    <Link href="/contact">Contact Restaurant</Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm" className="border-[#C9A84C]/80 text-[#7B1D1D] hover:bg-white text-xs h-8">
+                    <a href={`tel:${restaurantPhone}`}>
+                      <Phone className="w-3 h-3 mr-1.5" />
+                      Call +91 {restaurantPhone}
+                    </a>
+                  </Button>
+                  {googleMapsUrl && (
+                    <Button asChild variant="ghost" size="sm" className="text-[#7B1D1D] hover:bg-white/80 text-xs h-8">
+                      <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer">
+                        <MapPin className="w-3 h-3 mr-1.5" />
+                        Get Directions
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

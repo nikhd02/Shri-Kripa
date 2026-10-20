@@ -26,6 +26,7 @@ import {
   createTableAction,
   updateTableAction,
   toggleTableActiveAction,
+  toggleTableOnlineBookingAction,
   regenerateTableQRAction,
   deleteTableAction,
 } from '@/server/actions/tables';
@@ -51,6 +52,7 @@ export function TableManagerClient({ initialTables }: TableManagerClientProps) {
   const [tableNumber, setTableNumber] = useState('');
   const [capacity, setCapacity] = useState('4');
   const [isActive, setIsActive] = useState(true);
+  const [onlineBookingEnabled, setOnlineBookingEnabled] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
@@ -91,6 +93,7 @@ export function TableManagerClient({ initialTables }: TableManagerClientProps) {
     setTableNumber('');
     setCapacity('4');
     setIsActive(true);
+    setOnlineBookingEnabled(false);
     setErrorMessage('');
     setFieldErrors({});
     setIsAddModalOpen(true);
@@ -102,6 +105,7 @@ export function TableManagerClient({ initialTables }: TableManagerClientProps) {
     setTableNumber(table.tableNumber);
     setCapacity(table.capacity.toString());
     setIsActive(table.isActive);
+    setOnlineBookingEnabled(table.onlineBookingEnabled);
     setErrorMessage('');
     setFieldErrors({});
   };
@@ -117,6 +121,7 @@ export function TableManagerClient({ initialTables }: TableManagerClientProps) {
         tableNumber: tableNumber.trim(),
         capacity: parseInt(capacity, 10),
         isActive,
+        onlineBookingEnabled,
       });
 
       if (res.success && res.data) {
@@ -142,6 +147,7 @@ export function TableManagerClient({ initialTables }: TableManagerClientProps) {
         tableNumber: tableNumber.trim(),
         capacity: parseInt(capacity, 10),
         isActive,
+        onlineBookingEnabled,
       });
 
       if (res.success && res.data) {
@@ -168,6 +174,21 @@ export function TableManagerClient({ initialTables }: TableManagerClientProps) {
         );
       } else {
         alert(res.error || 'Failed to toggle status.');
+      }
+    });
+  };
+
+  // Toggle online booking enabled status
+  const handleToggleOnlineBooking = (table: TableItem) => {
+    const nextState = !table.onlineBookingEnabled;
+    startTransition(async () => {
+      const res = await toggleTableOnlineBookingAction(table.id, nextState);
+      if (res.success) {
+        setTables((prev) =>
+          prev.map((t) => (t.id === table.id ? { ...t, onlineBookingEnabled: nextState } : t))
+        );
+      } else {
+        alert(res.error || 'Failed to toggle online booking setting.');
       }
     });
   };
@@ -316,7 +337,7 @@ export function TableManagerClient({ initialTables }: TableManagerClientProps) {
                     >
                       Table {table.tableNumber}
                     </h3>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
                       <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-text-muted)] bg-[var(--color-muted)] border border-[var(--color-border)] px-2.5 py-0.5 rounded">
                         <Users className="w-3.5 h-3.5" /> {table.capacity} Guests
                       </span>
@@ -325,6 +346,24 @@ export function TableManagerClient({ initialTables }: TableManagerClientProps) {
                           {table.activeOrdersCount} Active Order{table.activeOrdersCount > 1 ? 's' : ''}
                         </span>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleOnlineBooking(table)}
+                        disabled={isPending}
+                        title="Click to toggle online reservation eligibility"
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold cursor-pointer transition-colors border ${
+                          table.onlineBookingEnabled
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                            : 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            table.onlineBookingEnabled ? 'bg-emerald-600' : 'bg-gray-400'
+                          }`}
+                        />
+                        {table.onlineBookingEnabled ? 'Online Booking Enabled' : 'Online Booking Disabled'}
+                      </button>
                     </div>
                   </div>
 
@@ -481,17 +520,32 @@ export function TableManagerClient({ initialTables }: TableManagerClientProps) {
                 )}
               </div>
 
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="add-table-active"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  className="w-4 h-4 rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
-                />
-                <label htmlFor="add-table-active" className="text-sm font-semibold text-[var(--color-text-primary)]">
-                  Active (Ready for guest orders)
-                </label>
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="add-table-active"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="w-4 h-4 rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                  />
+                  <label htmlFor="add-table-active" className="text-sm font-semibold text-[var(--color-text-primary)]">
+                    Active (Ready for guest orders)
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="add-table-online"
+                    checked={onlineBookingEnabled}
+                    onChange={(e) => setOnlineBookingEnabled(e.target.checked)}
+                    className="w-4 h-4 rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                  />
+                  <label htmlFor="add-table-online" className="text-sm font-semibold text-[var(--color-text-primary)]">
+                    Enable for Online Table Reservations
+                  </label>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--color-border)]">
@@ -577,17 +631,32 @@ export function TableManagerClient({ initialTables }: TableManagerClientProps) {
                 )}
               </div>
 
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="edit-table-active"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  className="w-4 h-4 rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
-                />
-                <label htmlFor="edit-table-active" className="text-sm font-semibold text-[var(--color-text-primary)]">
-                  Active (Ready for guest orders)
-                </label>
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="edit-table-active"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="w-4 h-4 rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                  />
+                  <label htmlFor="edit-table-active" className="text-sm font-semibold text-[var(--color-text-primary)]">
+                    Active (Ready for guest orders)
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="edit-table-online"
+                    checked={onlineBookingEnabled}
+                    onChange={(e) => setOnlineBookingEnabled(e.target.checked)}
+                    className="w-4 h-4 rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                  />
+                  <label htmlFor="edit-table-online" className="text-sm font-semibold text-[var(--color-text-primary)]">
+                    Enable for Online Table Reservations
+                  </label>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--color-border)]">

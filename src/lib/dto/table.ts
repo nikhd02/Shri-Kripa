@@ -11,6 +11,7 @@ export interface TableDTO {
   capacity: number;
   qrToken: string;
   isActive: boolean;
+  onlineBookingEnabled: boolean;
   createdAt: string;
   updatedAt: string;
   activeOrdersCount: number;
@@ -26,6 +27,7 @@ export function serializeTableDTO(
     capacity: table.capacity,
     qrToken: table.qrToken,
     isActive: table.isActive,
+    onlineBookingEnabled: table.onlineBookingEnabled,
     createdAt: table.createdAt.toISOString(),
     updatedAt: table.updatedAt.toISOString(),
     activeOrdersCount,

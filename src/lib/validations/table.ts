@@ -18,6 +18,7 @@ export const tableSchema = z.object({
     .min(1, 'Capacity must be at least 1 person.')
     .max(100, 'Capacity cannot exceed 100 people.'),
   isActive: z.coerce.boolean().default(true),
+  onlineBookingEnabled: z.coerce.boolean().default(false),
 });
 
 export type TableInput = z.infer<typeof tableSchema>;

@@ -38,7 +38,7 @@ function generateUniqueQrToken(): string {
  */
 export async function createTableAction(
   rawInput: Record<string, unknown>
-): Promise<TableActionResult> {
+): Promise<TableActionResult<TableDTO>> {
   const user = await requireAuth([Role.ADMIN, Role.MANAGER]);
 
   const parsed = tableSchema.safeParse(rawInput);
@@ -49,7 +49,7 @@ export async function createTableAction(
     };
   }
 
-  const { tableNumber, capacity, isActive } = parsed.data;
+  const { tableNumber, capacity, isActive, onlineBookingEnabled } = parsed.data;
 
   // Check unique table number
   const existing = await db.restaurantTable.findUnique({ where: { tableNumber } });
@@ -67,6 +67,7 @@ export async function createTableAction(
         tableNumber,
         capacity,
         isActive,
+        onlineBookingEnabled,
         qrToken: generateUniqueQrToken(),
       },
     });
@@ -76,10 +77,11 @@ export async function createTableAction(
       action: 'TABLE_CREATE',
       entity: 'RestaurantTable',
       entityId: table.id,
-      detail: { tableNumber, capacity, isActive },
+      detail: { tableNumber, capacity, isActive, onlineBookingEnabled },
     });
 
     safeRevalidatePath('/dashboard/tables');
+    safeRevalidatePath('/dashboard/bookings');
     return { success: true, data: serializeTableDTO(table) };
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -111,7 +113,7 @@ export async function updateTableAction(
     };
   }
 
-  const { tableNumber, capacity, isActive } = parsed.data;
+  const { tableNumber, capacity, isActive, onlineBookingEnabled } = parsed.data;
 
   const current = await db.restaurantTable.findUnique({ where: { id } });
   if (!current) {
@@ -137,6 +139,7 @@ export async function updateTableAction(
         tableNumber,
         capacity,
         isActive,
+        onlineBookingEnabled,
       },
     });
 
@@ -145,10 +148,11 @@ export async function updateTableAction(
       action: 'TABLE_UPDATE',
       entity: 'RestaurantTable',
       entityId: id,
-      detail: { tableNumber, capacity, isActive },
+      detail: { tableNumber, capacity, isActive, onlineBookingEnabled },
     });
 
     safeRevalidatePath('/dashboard/tables');
+    safeRevalidatePath('/dashboard/bookings');
     return { success: true, data: serializeTableDTO(updated) };
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -187,10 +191,44 @@ export async function toggleTableActiveAction(
     });
 
     safeRevalidatePath('/dashboard/tables');
+    safeRevalidatePath('/dashboard/bookings');
     return { success: true, data: serializeTableDTO(updated) };
   } catch (err) {
     console.error('[TableAction:ToggleActive] Unexpected error:', err);
     return { success: false, error: 'Failed to update table status.' };
+  }
+}
+
+/**
+ * Toggle table online booking enabled/disabled state.
+ * Disabling a table only prevents NEW online bookings; existing bookings remain intact.
+ */
+export async function toggleTableOnlineBookingAction(
+  id: string,
+  onlineBookingEnabled: boolean
+): Promise<TableActionResult<TableDTO>> {
+  const user = await requireAuth([Role.ADMIN, Role.MANAGER]);
+
+  try {
+    const updated = await db.restaurantTable.update({
+      where: { id },
+      data: { onlineBookingEnabled },
+    });
+
+    await logAdminAction({
+      userId: user.id,
+      action: 'TABLE_TOGGLE_ONLINE_BOOKING',
+      entity: 'RestaurantTable',
+      entityId: id,
+      detail: { onlineBookingEnabled },
+    });
+
+    safeRevalidatePath('/dashboard/tables');
+    safeRevalidatePath('/dashboard/bookings');
+    return { success: true, data: serializeTableDTO(updated) };
+  } catch (err) {
+    console.error('[TableAction:ToggleOnlineBooking] Unexpected error:', err);
+    return { success: false, error: 'Failed to update table online booking setting.' };
   }
 }
 
