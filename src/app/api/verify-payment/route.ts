@@ -188,7 +188,7 @@ export async function POST(request: Request) {
 
       const customerEmail = fullOrder?.customer?.email;
       if (customerEmail && fullOrder) {
-        sendOrderPaymentSuccessEmail({
+        await sendOrderPaymentSuccessEmail({
           orderNumber: fullOrder.orderNumber,
           customerName: fullOrder.customerName || fullOrder.customer?.name || 'Valued Guest',
           customerEmail,
@@ -205,9 +205,7 @@ export async function POST(request: Request) {
           total: Number(fullOrder.total),
           paymentId: razorpay_payment_id,
           paymentMethod: 'ONLINE (Razorpay)',
-        }).catch((err) =>
-          console.error('[Razorpay:Verify] Failed to send payment receipt email:', err)
-        );
+        });
       }
     } catch (emailErr) {
       console.error('[Razorpay:Verify] Error preparing payment receipt email:', emailErr);

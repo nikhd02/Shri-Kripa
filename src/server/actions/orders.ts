@@ -17,7 +17,10 @@ import {
   updateOrderStatusSchema,
   updatePaymentStatusSchema,
 } from '@/lib/validations/order';
-import { sendOrderConfirmedByStaffEmail } from '@/lib/email';
+import {
+  sendOrderReceivedEmail,
+  sendOrderConfirmedByStaffEmail,
+} from '@/lib/email';
 
 export type OrderActionResult<T = unknown> = {
   success: boolean;
@@ -343,6 +346,28 @@ export async function placeOrderAction(
         { maxWait: 10000, timeout: 30000 }
       );
 
+      // Send Order Placement Notification Email immediately
+      try {
+        await sendOrderReceivedEmail({
+          orderNumber: newOrder.orderNumber,
+          customerName: customerName.trim(),
+          customerEmail: customerEmail.trim().toLowerCase(),
+          customerPhone: customerPhone.trim(),
+          tableNumber,
+          items: orderItemsData.map((oi) => ({
+            name: oi.menuItemName,
+            variantName: oi.variantName,
+            quantity: oi.quantity,
+            lineTotal: Number(oi.lineTotal),
+          })),
+          subtotal: Number(subtotal),
+          taxAmount: Number(taxAmount),
+          total: Number(total),
+        });
+      } catch (emailErr) {
+        console.error('[OrderAction:Email] Failed to send order received email:', emailErr);
+      }
+
       safeRevalidatePath('/dashboard/orders');
       safeRevalidatePath('/kitchen');
 
@@ -457,7 +482,7 @@ export async function updateOrderStatusAction(
 
         const customerEmail = fullOrder?.customer?.email;
         if (customerEmail && fullOrder) {
-          sendOrderConfirmedByStaffEmail({
+          await sendOrderConfirmedByStaffEmail({
             orderNumber: fullOrder.orderNumber,
             customerName: fullOrder.customerName || fullOrder.customer?.name || 'Valued Guest',
             customerEmail,
@@ -472,9 +497,7 @@ export async function updateOrderStatusAction(
             subtotal: Number(fullOrder.subtotal),
             taxAmount: Number(fullOrder.taxAmount),
             total: Number(fullOrder.total),
-          }).catch((err) =>
-            console.error('[OrderAction:Email] Failed to send order accepted email:', err)
-          );
+          });
         }
       } catch (emailErr) {
         console.error('[OrderAction:Email] Error preparing confirmation email:', emailErr);
