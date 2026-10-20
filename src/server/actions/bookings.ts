@@ -29,6 +29,7 @@ export interface BookingSlot {
   time: string; // e.g. "12:30"
   label: string; // e.g. "12:30 PM"
   available: boolean;
+  isPast?: boolean;
   reason?: string;
   remainingCapacity: number;
 }
@@ -138,6 +139,27 @@ function generateBookingReference(): string {
 }
 
 /**
+ * Returns the current date (YYYY-MM-DD) and minute of the day (0-1439)
+ * strictly in Indian Standard Time (IST - Asia/Kolkata, UTC+05:30).
+ */
+export function getIndianStandardTime(): {
+  dateStr: string;
+  currentMinutes: number;
+} {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const timeStr = now.toLocaleTimeString('en-GB', {
+    timeZone: 'Asia/Kolkata',
+    hour12: false,
+  });
+  const [h, m] = timeStr.split(':').map((x) => parseInt(x, 10));
+  return {
+    dateStr,
+    currentMinutes: (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m),
+  };
+}
+
+/**
  * Public Action: Query available booking slots for a requested date & party size
  */
 export async function getAvailableBookingSlotsAction(
@@ -205,24 +227,37 @@ export async function getAvailableBookingSlotsAction(
     // Generate slots at 30-min intervals. Last slot must leave at least 60 mins before close.
     const slots: BookingSlot[] = [];
     const DURATION = 90; // minutes
-    const now = new Date();
-    const isToday =
-      now.getFullYear() === targetDate.getFullYear() &&
-      now.getMonth() === targetDate.getMonth() &&
-      now.getDate() === targetDate.getDate();
 
-    const currentMinuteOfDay = now.getHours() * 60 + now.getMinutes();
+    // Evaluate current time in Indian Standard Time (Asia/Kolkata, UTC+05:30)
+    const { dateStr: todayIST, currentMinutes: currentMinuteOfDay } = getIndianStandardTime();
+    const isToday = dateString === todayIST;
+    const isPastDate = dateString < todayIST;
 
     for (let minute = hours.openMinutes; minute <= hours.closeMinutes - 60; minute += 30) {
       const { time, label } = minutesToTimeString(minute);
 
-      // If today, reject past time slots (require at least 30 min advance booking)
-      if (isToday && minute <= currentMinuteOfDay + 30) {
+      // If the reservation date is entirely in the past
+      if (isPastDate) {
         slots.push({
           time,
           label,
           available: false,
-          reason: 'Time has passed or requires 30 mins advance notice',
+          isPast: true,
+          reason: 'This date has already passed.',
+          remainingCapacity: 0,
+        });
+        continue;
+      }
+
+      // If booking for today, any slot before the current time is past and disabled
+      // (e.g. if current time is 12:00 PM, 11:00 AM and 11:30 AM are disabled)
+      if (isToday && minute < currentMinuteOfDay) {
+        slots.push({
+          time,
+          label,
+          available: false,
+          isPast: true,
+          reason: 'This time slot has already passed for today.',
           remainingCapacity: 0,
         });
         continue;
@@ -328,11 +363,18 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
 
   const targetDate = parseDateAsUtc(bookingDate);
 
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
+  const { dateStr: todayIST, currentMinutes: currentMinuteOfDay } = getIndianStandardTime();
 
-  if (targetDate < today) {
+  if (bookingDate < todayIST) {
     return { success: false, error: 'Cannot book a table for a past date.' };
+  }
+
+  const slotMinutes = timeStringToMinutes(timeSlot);
+  if (bookingDate === todayIST && slotMinutes < currentMinuteOfDay) {
+    return {
+      success: false,
+      error: 'This time slot has already passed for today. Please select an upcoming slot.',
+    };
   }
 
   // Execute atomic transaction with concurrency check
