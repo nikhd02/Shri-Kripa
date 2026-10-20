@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     const order = await db.order.findUnique({
       where: { id: orderId },
       include: {
+        customer: true,
         paymentRecords: { orderBy: { createdAt: 'desc' }, take: 1 },
       },
     });
@@ -98,6 +99,7 @@ export async function POST(request: Request) {
         orderNumber: order.orderNumber,
         customerName: order.customerName || '',
         customerPhone: order.customerPhone || '',
+        customerEmail: order.customer?.email || '',
       },
     });
 

@@ -131,6 +131,7 @@ export function PublicMenuClient({
   // Checkout State
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [paymentMode, setPaymentMode] = useState<'ONLINE' | 'CASH'>('ONLINE');
@@ -320,14 +321,38 @@ export function PublicMenuClient({
     if (cart.length === 0) return;
     setCheckoutError(null);
 
+    // Client-side mandatory field validations
+    const trimmedName = customerName.trim();
+    if (!trimmedName || trimmedName.length < 2) {
+      setCheckoutError('Please enter your full name (at least 2 characters).');
+      return;
+    }
+
+    const cleanPhone = customerPhone.replace(/\D/g, '');
+    if (cleanPhone.length !== 10) {
+      setCheckoutError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    const trimmedEmail = customerEmail.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
+      setCheckoutError('Please enter a valid email address for order confirmation & receipt.');
+      return;
+    }
+
+    // Direct website orders (no table QR) must be paid online
+    const effectivePaymentMode = verifiedTable ? paymentMode : 'ONLINE';
+
     // Generate random idempotency key for this submission attempt
     const idempotencyKey = `ord_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
     startOrderTransition(async () => {
       const payload = {
         tableToken: verifiedTable?.qrToken || null,
-        customerName: customerName.trim() || undefined,
-        customerPhone: customerPhone.trim() || undefined,
+        customerName: trimmedName,
+        customerPhone: cleanPhone,
+        customerEmail: trimmedEmail,
         notes: orderNotes.trim() || undefined,
         idempotencyKey,
         items: cart.map((ci) => ({
@@ -346,8 +371,8 @@ export function PublicMenuClient({
         return;
       }
 
-      // If customer chose Cash / Pay at counter
-      if (paymentMode === 'CASH') {
+      // If customer is at a table and chose Cash / Pay at counter
+      if (effectivePaymentMode === 'CASH') {
         setConfirmedOrder({
           orderNumber: res.data.orderNumber,
           total: res.data.total,
@@ -408,8 +433,9 @@ export function PublicMenuClient({
           description: `Order #${res.data.orderNumber}`,
           order_id: createData.razorpayOrderId,
           prefill: {
-            name: customerName.trim() || undefined,
-            contact: customerPhone.trim() || undefined,
+            name: trimmedName,
+            contact: cleanPhone,
+            email: trimmedEmail,
           },
           theme: {
             color: '#7B1D1D',
@@ -1080,17 +1106,21 @@ export function PublicMenuClient({
               {/* Customer Info Form */}
               {cart.length > 0 && (
                 <div className="mt-6 pt-4 border-t border-gray-200 space-y-3">
-                  <p className="text-xs font-bold uppercase tracking-wider text-gray-700">
-                    Contact & Kitchen Instructions
+                  <p className="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center justify-between">
+                    <span>Contact & Guest Details</span>
+                    <span className="text-[10px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+                      All Fields Required
+                    </span>
                   </p>
 
                   <div>
-                    <label className="block text-[11px] font-medium text-gray-600 mb-0.5">
-                      Your Name (Optional)
+                    <label className="block text-[11px] font-bold text-gray-700 mb-0.5">
+                      Your Full Name <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       placeholder="e.g. Rahul Sharma"
+                      required
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       className="w-full px-3 py-1.5 rounded-lg border border-gray-300 text-xs focus:ring-1 focus:ring-[var(--color-primary)] focus:outline-none"
@@ -1098,25 +1128,41 @@ export function PublicMenuClient({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-medium text-gray-600 mb-0.5">
-                      Phone Number (Optional)
+                    <label className="block text-[11px] font-bold text-gray-700 mb-0.5">
+                      Mobile Number (10 Digits) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="tel"
                       placeholder="e.g. 9876543210"
+                      required
+                      maxLength={10}
                       value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
+                      className="w-full px-3 py-1.5 rounded-lg border border-gray-300 text-xs focus:ring-1 focus:ring-[var(--color-primary)] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-0.5">
+                      Email Address (For Bill & Updates) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="e.g. rahul@gmail.com"
+                      required
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
                       className="w-full px-3 py-1.5 rounded-lg border border-gray-300 text-xs focus:ring-1 focus:ring-[var(--color-primary)] focus:outline-none"
                     />
                   </div>
 
                   <div>
                     <label className="block text-[11px] font-medium text-gray-600 mb-0.5">
-                      Order Notes (Optional)
+                      Kitchen Instructions / Notes (Optional)
                     </label>
                     <textarea
                       rows={2}
-                      placeholder="e.g. Please bring water glasses first, extra spicy dal..."
+                      placeholder="e.g. Less spicy, extra onions, bring water glasses first..."
                       value={orderNotes}
                       onChange={(e) => setOrderNotes(e.target.value)}
                       className="w-full px-3 py-1.5 rounded-lg border border-gray-300 text-xs focus:ring-1 focus:ring-[var(--color-primary)] focus:outline-none"
@@ -1151,40 +1197,57 @@ export function PublicMenuClient({
                 </div>
 
                 {/* Payment Mode Selection */}
-                <div className="grid grid-cols-2 gap-2 text-xs pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMode('ONLINE')}
-                    className={`py-2 px-3 rounded-xl border text-center font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      paymentMode === 'ONLINE'
-                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)] shadow-xs'
-                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <CreditCard className="w-3.5 h-3.5" />
-                    <span>Pay Online</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMode('CASH')}
-                    className={`py-2 px-3 rounded-xl border text-center font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      paymentMode === 'CASH'
-                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)] shadow-xs'
-                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <span>💵 Pay at Counter</span>
-                  </button>
-                </div>
+                {verifiedTable ? (
+                  /* Table QR Scanned: 2 Options available (Online or Counter) */
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-bold text-gray-700">Choose Payment Option (Table {verifiedTable.tableNumber}):</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMode('ONLINE')}
+                        className={`py-2 px-3 rounded-xl border text-center font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          paymentMode === 'ONLINE'
+                            ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)] shadow-xs'
+                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        <CreditCard className="w-3.5 h-3.5" />
+                        <span>Pay Online</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMode('CASH')}
+                        className={`py-2 px-3 rounded-xl border text-center font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          paymentMode === 'CASH'
+                            ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)] shadow-xs'
+                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        <span>💵 Pay at Counter</span>
+                      </button>
+                    </div>
 
-                <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800 flex items-center gap-2">
-                  <Info className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                  <span>
-                    {paymentMode === 'ONLINE'
-                      ? 'Secure Standard Checkout via UPI, Debit/Credit Card, or NetBanking.'
-                      : 'Pay at counter or dining table via Cash or UPI upon completion.'}
-                  </span>
-                </div>
+                    <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800 flex items-center gap-2">
+                      <Info className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                      <span>
+                        {paymentMode === 'ONLINE'
+                          ? 'Pay instantly via UPI, Card, or NetBanking. Receipt sent to your email.'
+                          : `Pay at counter or Table ${verifiedTable.tableNumber} upon completing your meal.`}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  /* Website / Non-Table Order: Only 1 Online Payment Option */
+                  <div className="p-3 rounded-xl bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200/80 text-xs space-y-1">
+                    <div className="flex items-center gap-2 text-[var(--color-primary)] font-bold">
+                      <CreditCard className="w-4 h-4" />
+                      <span>Online Payment Only (Razorpay)</span>
+                    </div>
+                    <p className="text-[11px] text-gray-600">
+                      Orders placed directly online require prepayment via UPI, Card, or NetBanking. A detailed digital receipt will be emailed immediately upon successful payment.
+                    </p>
+                  </div>
+                )}
 
                 <button
                   type="button"
@@ -1196,9 +1259,9 @@ export function PublicMenuClient({
                     ? 'Placing Order...'
                     : isProcessingPayment
                     ? 'Processing Payment...'
-                    : paymentMode === 'ONLINE'
-                    ? `Pay & Place Order (${formatCurrency(cartTotal)})`
-                    : `Place Order — Pay at Counter (${formatCurrency(cartTotal)})`}
+                    : verifiedTable && paymentMode === 'CASH'
+                    ? `Place Order — Pay at Counter (${formatCurrency(cartTotal)})`
+                    : `Pay Online & Place Order (${formatCurrency(cartTotal)})`}
                 </button>
               </div>
             )}

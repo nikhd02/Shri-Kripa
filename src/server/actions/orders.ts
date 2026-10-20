@@ -17,6 +17,7 @@ import {
   updateOrderStatusSchema,
   updatePaymentStatusSchema,
 } from '@/lib/validations/order';
+import { sendOrderConfirmedByStaffEmail } from '@/lib/email';
 
 export type OrderActionResult<T = unknown> = {
   success: boolean;
@@ -89,7 +90,7 @@ export async function placeOrderAction(
     };
   }
 
-  const { tableToken, customerName, customerPhone, notes, idempotencyKey, items } = parsed.data;
+  const { tableToken, customerName, customerPhone, customerEmail, notes, idempotencyKey, items } = parsed.data;
 
   // Check idempotency key to prevent accidental double submissions (including concurrent ones)
   if (idempotencyKey) {
@@ -278,15 +279,34 @@ export async function placeOrderAction(
             }
           }
 
+          // Upsert customer profile
+          const customer = await tx.customer.upsert({
+            where: { phone: customerPhone.trim() },
+            update: {
+              name: customerName.trim(),
+              email: customerEmail.trim().toLowerCase(),
+            },
+            create: {
+              phone: customerPhone.trim(),
+              name: customerName.trim(),
+              email: customerEmail.trim().toLowerCase(),
+            },
+          });
+
+          const formattedNotes = notes?.trim()
+            ? `[Email: ${customerEmail.trim().toLowerCase()}] ${notes.trim()}`
+            : `[Email: ${customerEmail.trim().toLowerCase()}]`;
+
           const createdOrder = await tx.order.create({
             data: {
               orderNumber,
               tableId,
+              customerId: customer.id,
               status: OrderStatus.PENDING,
               source: orderSource,
               customerName: customerName?.trim() || null,
               customerPhone: customerPhone?.trim() || null,
-              notes: notes?.trim() || null,
+              notes: formattedNotes,
               subtotal,
               taxAmount,
               total,
@@ -422,6 +442,44 @@ export async function updateOrderStatusAction(
       where: { id: orderId },
       data: { status: nextStatus },
     });
+
+    // When admin/staff confirms the order (ACCEPTED), send confirmation email to customer
+    if (nextStatus === OrderStatus.ACCEPTED) {
+      try {
+        const fullOrder = await db.order.findUnique({
+          where: { id: orderId },
+          include: {
+            orderItems: true,
+            table: true,
+            customer: true,
+          },
+        });
+
+        const customerEmail = fullOrder?.customer?.email;
+        if (customerEmail && fullOrder) {
+          sendOrderConfirmedByStaffEmail({
+            orderNumber: fullOrder.orderNumber,
+            customerName: fullOrder.customerName || fullOrder.customer?.name || 'Valued Guest',
+            customerEmail,
+            customerPhone: fullOrder.customerPhone || fullOrder.customer?.phone,
+            tableNumber: fullOrder.table?.tableNumber,
+            items: fullOrder.orderItems.map((oi) => ({
+              name: oi.menuItemName,
+              variantName: oi.variantName,
+              quantity: oi.quantity,
+              lineTotal: Number(oi.lineTotal),
+            })),
+            subtotal: Number(fullOrder.subtotal),
+            taxAmount: Number(fullOrder.taxAmount),
+            total: Number(fullOrder.total),
+          }).catch((err) =>
+            console.error('[OrderAction:Email] Failed to send order accepted email:', err)
+          );
+        }
+      } catch (emailErr) {
+        console.error('[OrderAction:Email] Error preparing confirmation email:', emailErr);
+      }
+    }
 
     await logAdminAction({
       userId: user.id,

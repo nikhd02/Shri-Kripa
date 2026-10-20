@@ -26,18 +26,19 @@ export const orderItemInputSchema = z.object({
 export const placeOrderSchema = z.object({
   tableToken: z.string().trim().optional().nullable(),
   customerName: z
-    .string()
+    .string({ required_error: 'Name is required.' })
     .trim()
-    .max(100, 'Name cannot exceed 100 characters.')
-    .optional()
-    .nullable(),
+    .min(2, 'Name must be at least 2 characters.')
+    .max(100, 'Name cannot exceed 100 characters.'),
   customerPhone: z
-    .string()
+    .string({ required_error: 'Phone number is required.' })
     .trim()
-    .regex(/^[0-9+\-\s()]*$/, 'Invalid phone number format.')
-    .max(20, 'Phone number cannot exceed 20 characters.')
-    .optional()
-    .nullable(),
+    .regex(/^[0-9]{10}$/, 'Please enter a valid 10-digit mobile number.'),
+  customerEmail: z
+    .string({ required_error: 'Email address is required.' })
+    .trim()
+    .email('Please enter a valid email address.')
+    .max(200, 'Email cannot exceed 200 characters.'),
   notes: z
     .string()
     .trim()

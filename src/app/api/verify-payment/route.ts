@@ -11,6 +11,7 @@ import Razorpay from 'razorpay';
 import { db } from '@/lib/db';
 import { PaymentStatus, PaymentMethod } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
+import { sendOrderPaymentSuccessEmail } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
@@ -172,6 +173,44 @@ export async function POST(request: Request) {
       revalidatePath('/dashboard/reports');
     } catch (revalidateErr) {
       console.warn('[Razorpay:Verify] Revalidate path notice:', revalidateErr);
+    }
+
+    // 7. Send payment receipt email to customer
+    try {
+      const fullOrder = await db.order.findUnique({
+        where: { id: order.id },
+        include: {
+          orderItems: true,
+          table: true,
+          customer: true,
+        },
+      });
+
+      const customerEmail = fullOrder?.customer?.email;
+      if (customerEmail && fullOrder) {
+        sendOrderPaymentSuccessEmail({
+          orderNumber: fullOrder.orderNumber,
+          customerName: fullOrder.customerName || fullOrder.customer?.name || 'Valued Guest',
+          customerEmail,
+          customerPhone: fullOrder.customerPhone || fullOrder.customer?.phone,
+          tableNumber: fullOrder.table?.tableNumber,
+          items: fullOrder.orderItems.map((oi) => ({
+            name: oi.menuItemName,
+            variantName: oi.variantName,
+            quantity: oi.quantity,
+            lineTotal: Number(oi.lineTotal),
+          })),
+          subtotal: Number(fullOrder.subtotal),
+          taxAmount: Number(fullOrder.taxAmount),
+          total: Number(fullOrder.total),
+          paymentId: razorpay_payment_id,
+          paymentMethod: 'ONLINE (Razorpay)',
+        }).catch((err) =>
+          console.error('[Razorpay:Verify] Failed to send payment receipt email:', err)
+        );
+      }
+    } catch (emailErr) {
+      console.error('[Razorpay:Verify] Error preparing payment receipt email:', emailErr);
     }
 
     return NextResponse.json({
