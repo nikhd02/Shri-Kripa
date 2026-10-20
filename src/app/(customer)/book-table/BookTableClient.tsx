@@ -98,6 +98,18 @@ export function BookTableClient({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmedBooking, setConfirmedBooking] = useState<BookingDTO | null>(null);
 
+  // Helper to determine if a slot has already passed in real-time
+  const isSlotInPast = (slot: BookingSlot): boolean => {
+    if (slot.isPast) return true;
+    if (bookingDate < todayStr) return true;
+    if (bookingDate === todayStr) {
+      const [h, m] = slot.time.split(':').map((x) => parseInt(x, 10));
+      const slotMin = (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+      return slotMin < currentISTMinutes;
+    }
+    return false;
+  };
+
   // Fetch available slots whenever date or guest count changes
   useEffect(() => {
     let isCancelled = false;
@@ -334,23 +346,78 @@ export function BookTableClient({
         </div>
       )}
 
-      {/* ─── 1. Date & Guest Count ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-[#241512] mb-1.5 flex items-center gap-1.5">
-            <CalendarDays className="w-4 h-4 text-[#C9A84C]" />
-            Reservation Date <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="date"
-            min={todayStr}
-            value={bookingDate}
-            onChange={(e) => setBookingDate(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm focus:ring-2 focus:ring-[#7B1D1D] focus:outline-hidden font-medium"
-            required
-          />
+      {/* ─── 1. Date, Time & Guest Count ─── */}
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+          {/* Reservation Date */}
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#241512] mb-1.5 flex items-center gap-1.5">
+              <CalendarDays className="w-4 h-4 text-[#C9A84C]" />
+              Reservation Date <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              min={todayStr}
+              value={bookingDate}
+              onChange={(e) => setBookingDate(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm focus:ring-2 focus:ring-[#7B1D1D] focus:outline-hidden font-medium bg-white"
+              required
+            />
+          </div>
+
+          {/* Reservation Time - Styled identically to Date Input */}
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#241512] mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-[#C9A84C]" />
+                Reservation Time <span className="text-red-500">*</span>
+              </span>
+              {selectedSlot && (
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  ● {slots.find((s) => s.time === selectedSlot)?.label || selectedSlot}
+                </span>
+              )}
+            </label>
+            <select
+              value={selectedSlot}
+              onChange={(e) => {
+                const val = e.target.value;
+                const slot = slots.find((s) => s.time === val);
+                if (slot && !isSlotInPast(slot) && slot.available) {
+                  setSelectedSlot(val);
+                  setSelectedUnavailableSlot(null);
+                } else if (val) {
+                  setSelectedSlot('');
+                  setSelectedUnavailableSlot(val);
+                } else {
+                  setSelectedSlot('');
+                  setSelectedUnavailableSlot(null);
+                }
+              }}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm focus:ring-2 focus:ring-[#7B1D1D] focus:outline-hidden font-medium bg-white text-[#241512] cursor-pointer"
+              required
+            >
+              <option value="">
+                {isLoadingSlots ? 'Checking live slots...' : '-- Select Dining Time --'}
+              </option>
+              {slots.map((slot) => {
+                const isPast = isSlotInPast(slot);
+                const isAvail = slot.available && !isPast;
+                return (
+                  <option
+                    key={slot.time}
+                    value={slot.time}
+                    disabled={isPast || !isAvail}
+                  >
+                    {slot.label} {isPast ? '— (Closed / Past)' : !isAvail ? '— (Booked / Full)' : '— (Available)'}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
         </div>
 
+        {/* Number of Guests */}
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-[#241512] mb-1.5 flex items-center gap-1.5">
             <Users className="w-4 h-4 text-[#C9A84C]" />
@@ -388,20 +455,8 @@ export function BookTableClient({
       </div>
 
       {/* ─── 2. Time Slot Selection ─── */}
-      <div className="space-y-3">
+      <div className="space-y-3 pt-2">
         {(() => {
-          // Helper to determine if a slot has already passed in real-time
-          const isSlotInPast = (slot: BookingSlot): boolean => {
-            if (slot.isPast) return true;
-            if (bookingDate < todayStr) return true;
-            if (bookingDate === todayStr) {
-              const [h, m] = slot.time.split(':').map((x) => parseInt(x, 10));
-              const slotMin = (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
-              return slotMin < currentISTMinutes;
-            }
-            return false;
-          };
-
           const pastSlotsCount = slots.filter((s) => isSlotInPast(s)).length;
           const availableSlotsCount = slots.filter((s) => s.available && !isSlotInPast(s)).length;
           const bookedSlotsCount = slots.filter((s) => !s.available && !isSlotInPast(s)).length;
