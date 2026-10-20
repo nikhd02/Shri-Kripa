@@ -706,15 +706,35 @@ export async function createTableBookingAction(rawInput: unknown): Promise<{
             const rand4 = Math.floor(1000 + Math.random() * 9000);
             const orderNumber = `SK-${year}${month}${day}-${rand4}`;
 
+            let customerId: string | undefined = undefined;
+            if (customerPhone) {
+              const cust = await tx.customer.upsert({
+                where: { phone: customerPhone.trim() },
+                update: {
+                  name: customerName.trim(),
+                  ...(customerEmail?.trim() ? { email: customerEmail.trim().toLowerCase() } : {}),
+                },
+                create: {
+                  phone: customerPhone.trim(),
+                  name: customerName.trim(),
+                  email: customerEmail?.trim() ? customerEmail.trim().toLowerCase() : null,
+                },
+              });
+              customerId = cust.id;
+            }
+
+            const emailTag = customerEmail?.trim() ? `[Email: ${customerEmail.trim().toLowerCase()}] ` : '';
+
             await tx.order.create({
               data: {
                 orderNumber,
                 tableId: assignedTable.id,
+                customerId,
                 source: OrderSource.WEBSITE,
                 status: OrderStatus.PENDING,
                 customerName: customerName.trim(),
                 customerPhone: customerPhone.trim(),
-                notes: `Advance Pre-Order for Table Reservation #${bookingReference} on ${bookingDate} at ${timeSlot}`,
+                notes: `${emailTag}Advance Pre-Order for Table Reservation #${bookingReference} on ${bookingDate} at ${timeSlot}`,
                 subtotal,
                 taxAmount,
                 total,
@@ -907,8 +927,17 @@ export async function updateBookingStatusAction(rawInput: unknown): Promise<{
           },
         });
 
+        if (linkedOrder && linkedOrder.status === OrderStatus.PENDING) {
+          await db.order.update({
+            where: { id: linkedOrder.id },
+            data: { status: OrderStatus.ACCEPTED },
+          });
+        }
+
         const isOrderPaid = linkedOrder?.paymentRecords[0]?.status === PaymentStatus.COMPLETED;
         const paymentUrl = linkedOrder && !isOrderPaid ? `${getAppBaseUrl()}/pay/${linkedOrder.id}` : undefined;
+
+        console.log('[Bookings:StaffConfirmEmail] Sending to:', updated.customerEmail, 'paymentUrl:', paymentUrl);
 
         await sendTableBookingEmail({
           bookingReference: updated.bookingReference,

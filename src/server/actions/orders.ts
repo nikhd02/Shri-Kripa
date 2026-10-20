@@ -503,26 +503,62 @@ export async function updateOrderStatusAction(
           },
         });
 
-        const customerEmail = fullOrder?.customer?.email || fullOrder?.notes?.match(/\[Email:\s*([^\]]+)\]/i)?.[1];
-        if (customerEmail && fullOrder) {
-          const isPaid = fullOrder.paymentRecords[0]?.status === PaymentStatus.COMPLETED;
-          await sendOrderConfirmedByStaffEmail({
-            orderNumber: fullOrder.orderNumber,
-            customerName: fullOrder.customerName || fullOrder.customer?.name || 'Valued Guest',
-            customerEmail: customerEmail.trim().toLowerCase(),
-            customerPhone: fullOrder.customerPhone || fullOrder.customer?.phone,
-            tableNumber: fullOrder.table?.tableNumber,
-            paymentUrl: !isPaid ? `${getAppBaseUrl()}/pay/${fullOrder.id}` : undefined,
-            items: fullOrder.orderItems.map((oi) => ({
-              name: oi.menuItemName,
-              variantName: oi.variantName,
-              quantity: oi.quantity,
-              lineTotal: Number(oi.lineTotal),
-            })),
-            subtotal: Number(fullOrder.subtotal),
-            taxAmount: Number(fullOrder.taxAmount),
-            total: Number(fullOrder.total),
-          });
+        if (fullOrder) {
+          let customerEmail =
+            fullOrder.customer?.email ||
+            fullOrder.notes?.match(/\[Email:\s*([^\]]+)\]/i)?.[1];
+
+          // If not in customer or notes, check linked table reservation!
+          if (!customerEmail && fullOrder.notes) {
+            const bookingRefMatch = fullOrder.notes.match(/#(TB-[\w-]+)/i);
+            if (bookingRefMatch) {
+              const linkedBooking = await db.tableBooking.findUnique({
+                where: { bookingReference: bookingRefMatch[1] },
+                select: { customerEmail: true },
+              });
+              if (linkedBooking?.customerEmail) {
+                customerEmail = linkedBooking.customerEmail;
+              }
+            }
+          }
+
+          // If still not found, check customer by phone
+          if (!customerEmail && fullOrder.customerPhone) {
+            const custByPhone = await db.customer.findUnique({
+              where: { phone: fullOrder.customerPhone },
+              select: { email: true },
+            });
+            if (custByPhone?.email) {
+              customerEmail = custByPhone.email;
+            }
+          }
+
+          console.log('[OrderAction:Email] Target recipient for order', fullOrder.orderNumber, ':', customerEmail);
+
+          if (customerEmail?.trim()) {
+            const isPaid = fullOrder.paymentRecords[0]?.status === PaymentStatus.COMPLETED;
+            const paymentUrl = !isPaid ? `${getAppBaseUrl()}/pay/${fullOrder.id}` : undefined;
+
+            await sendOrderConfirmedByStaffEmail({
+              orderNumber: fullOrder.orderNumber,
+              customerName: fullOrder.customerName || fullOrder.customer?.name || 'Valued Guest',
+              customerEmail: customerEmail.trim().toLowerCase(),
+              customerPhone: fullOrder.customerPhone || fullOrder.customer?.phone,
+              tableNumber: fullOrder.table?.tableNumber,
+              paymentUrl,
+              items: fullOrder.orderItems.map((oi) => ({
+                name: oi.menuItemName,
+                variantName: oi.variantName,
+                quantity: oi.quantity,
+                lineTotal: Number(oi.lineTotal),
+              })),
+              subtotal: Number(fullOrder.subtotal),
+              taxAmount: Number(fullOrder.taxAmount),
+              total: Number(fullOrder.total),
+            });
+          } else {
+            console.warn('[OrderAction:Email] No customer email found for order', fullOrder.orderNumber);
+          }
         }
       } catch (emailErr) {
         console.error('[OrderAction:Email] Error preparing confirmation email:', emailErr);
