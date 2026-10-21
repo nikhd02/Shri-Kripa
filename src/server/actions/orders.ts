@@ -499,25 +499,25 @@ export async function updateOrderStatusAction(
             orderItems: true,
             table: true,
             customer: true,
-            paymentRecords: { orderBy: { createdAt: 'desc' }, take: 1 },
+            paymentRecords: true,
           },
         });
 
         if (fullOrder) {
           let customerEmail =
-            fullOrder.customer?.email ||
-            fullOrder.notes?.match(/\[Email:\s*([^\]]+)\]/i)?.[1];
+            fullOrder.customer?.email?.trim() ||
+            fullOrder.notes?.match(/\[Email:\s*([^\]]+)\]/i)?.[1]?.trim();
 
           // If not in customer or notes, check linked table reservation!
           if (!customerEmail && fullOrder.notes) {
-            const bookingRefMatch = fullOrder.notes.match(/#(TB-[\w-]+)/i);
+            const bookingRefMatch = fullOrder.notes.match(/#?(TB-[\w-]+)/i);
             if (bookingRefMatch) {
               const linkedBooking = await db.tableBooking.findUnique({
                 where: { bookingReference: bookingRefMatch[1] },
                 select: { customerEmail: true },
               });
               if (linkedBooking?.customerEmail) {
-                customerEmail = linkedBooking.customerEmail;
+                customerEmail = linkedBooking.customerEmail.trim();
               }
             }
           }
@@ -525,19 +525,21 @@ export async function updateOrderStatusAction(
           // If still not found, check customer by phone
           if (!customerEmail && fullOrder.customerPhone) {
             const custByPhone = await db.customer.findUnique({
-              where: { phone: fullOrder.customerPhone },
+              where: { phone: fullOrder.customerPhone.trim() },
               select: { email: true },
             });
             if (custByPhone?.email) {
-              customerEmail = custByPhone.email;
+              customerEmail = custByPhone.email.trim();
             }
           }
 
           console.log('[OrderAction:Email] Target recipient for order', fullOrder.orderNumber, ':', customerEmail);
 
           if (customerEmail?.trim()) {
-            const isPaid = fullOrder.paymentRecords[0]?.status === PaymentStatus.COMPLETED;
+            const isPaid = fullOrder.paymentRecords.some((p) => p.status === PaymentStatus.COMPLETED);
             const paymentUrl = !isPaid ? `${getAppBaseUrl()}/pay/${fullOrder.id}` : undefined;
+
+            console.log('[OrderAction:Email] Dispatching approval email. paymentUrl:', paymentUrl);
 
             await sendOrderConfirmedByStaffEmail({
               orderNumber: fullOrder.orderNumber,

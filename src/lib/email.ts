@@ -374,11 +374,16 @@ export async function sendOrderConfirmedByStaffEmail(payload: OrderEmailPayload)
     if (!transporter) return { success: false, reason: 'SMTP not configured' };
 
     const itemsHtml = renderItemsHtml(payload.items);
+    const hasPaymentUrl = !!payload.paymentUrl;
+
+    const emailSubject = hasPaymentUrl
+      ? `Order Approved #${payload.orderNumber} - Complete Payment to Start Preparation | Shree Kripa`
+      : `Your Order is Confirmed #${payload.orderNumber} - Shree Kripa`;
 
     const html = `
     <!DOCTYPE html>
     <html>
-    <head><meta charset="utf-8"><title>Order Confirmed - Shree Kripa</title></head>
+    <head><meta charset="utf-8"><title>Order Approved - Shree Kripa</title></head>
     <body style="margin: 0; padding: 24px 0; background-color: #fbf7f4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
       <table width="100%" border="0" cellspacing="0" cellpadding="0">
         <tr>
@@ -396,15 +401,54 @@ export async function sendOrderConfirmedByStaffEmail(payload: OrderEmailPayload)
               <!-- Status Banner -->
               <tr>
                 <td style="padding: 24px 28px 12px 28px; text-align: center;">
-                  <div style="display: inline-block; background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 50px; padding: 8px 18px; margin-bottom: 12px;">
-                    <span style="color: #92400e; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;">★ Order Accepted & Confirmed</span>
+                  ${
+                    hasPaymentUrl
+                      ? `
+                  <div style="display: inline-block; background-color: #fff7ed; border: 1px solid #fed7aa; border-radius: 50px; padding: 8px 20px; margin-bottom: 12px;">
+                    <span style="color: #c2410c; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;">★ Order Approved • Payment Required</span>
                   </div>
-                  <h2 style="color: #241512; font-size: 20px; margin: 8px 0 4px 0;">Hello, ${payload.customerName}!</h2>
-                  <p style="color: #6b5c58; font-size: 14px; margin: 0; line-height: 1.5;">
-                    Your order has been officially confirmed by our restaurant manager. The kitchen is preparing your dishes fresh with utmost care.
-                  </p>
+                  <h2 style="color: #241512; font-size: 22px; margin: 8px 0 6px 0; font-weight: 800;">Namaste, ${payload.customerName}!</h2>
+                  <p style="color: #6b5c58; font-size: 14px; margin: 0; line-height: 1.6;">
+                    Your order has been officially <strong>approved by our restaurant manager</strong>. To send your order ticket to the kitchen, please complete your online payment using the link below.
+                  </p>`
+                      : `
+                  <div style="display: inline-block; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 50px; padding: 8px 18px; margin-bottom: 12px;">
+                    <span style="color: #065f46; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;">✓ Order Approved & Confirmed</span>
+                  </div>
+                  <h2 style="color: #241512; font-size: 22px; margin: 8px 0 6px 0; font-weight: 800;">Hello, ${payload.customerName}!</h2>
+                  <p style="color: #6b5c58; font-size: 14px; margin: 0; line-height: 1.6;">
+                    Your order has been officially confirmed by our restaurant manager. Our kitchen is preparing your dishes fresh with utmost care.
+                  </p>`
+                  }
                 </td>
               </tr>
+
+              ${
+                hasPaymentUrl
+                  ? `
+              <!-- Payment CTA Box -->
+              <tr>
+                <td style="padding: 0 28px 20px 28px;">
+                  <div style="background-color: #fdfaf7; border: 2px dashed #C9A84C; border-radius: 16px; padding: 24px 20px; text-align: center; box-shadow: 0 4px 16px rgba(123, 29, 29, 0.05);">
+                    <p style="margin: 0 0 12px 0; font-size: 14px; font-weight: 800; color: #7B1D1D; text-transform: uppercase; letter-spacing: 0.8px;">
+                      💳 Online Payment Required to Start Preparation
+                    </p>
+                    <a href="${payload.paymentUrl}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #7B1D1D 0%, #521212 100%); color: #ffffff; text-decoration: none; padding: 15px 36px; border-radius: 50px; font-weight: 700; font-size: 16px; border: 2px solid #C9A84C; box-shadow: 0 4px 16px rgba(123, 29, 29, 0.3);">
+                      Pay Now Online (₹${Number(payload.total).toFixed(2)}) →
+                    </a>
+                    <p style="margin: 14px 0 0 0; font-size: 12px; color: #6b5c58; line-height: 1.5;">
+                      Pay securely via <strong>UPI (Google Pay, PhonePe, Paytm, BHIM)</strong>, Debit/Credit Cards, or NetBanking.<br/>
+                      <em>Once payment is verified, your order is instantly forwarded to our chefs in the kitchen.</em>
+                    </p>
+                    <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #e5d5c5; font-size: 11px; color: #8c7e7b; word-break: break-all;">
+                      Direct payment link:<br/>
+                      <a href="${payload.paymentUrl}" style="color: #7B1D1D; font-weight: 600; text-decoration: underline;">${payload.paymentUrl}</a>
+                    </div>
+                  </div>
+                </td>
+              </tr>`
+                  : ''
+              }
 
               <!-- Order Summary Meta -->
               <tr>
@@ -423,8 +467,10 @@ export async function sendOrderConfirmedByStaffEmail(payload: OrderEmailPayload)
                         : ''
                     }
                     <tr>
-                      <td style="font-size: 13px; color: #6b5c58; padding: 4px 0;">Total Payable / Paid:</td>
-                      <td style="font-size: 15px; color: #7B1D1D; font-weight: 700; text-align: right;">₹${Number(payload.total).toFixed(2)}</td>
+                      <td style="font-size: 13px; color: #6b5c58; padding: 4px 0;">Payment Status:</td>
+                      <td style="font-size: 14px; color: ${hasPaymentUrl ? '#c2410c' : '#065f46'}; font-weight: 700; text-align: right;">
+                        ${hasPaymentUrl ? '⏳ Awaiting Payment' : '✓ Paid'}
+                      </td>
                     </tr>
                   </table>
                 </td>
@@ -436,12 +482,36 @@ export async function sendOrderConfirmedByStaffEmail(payload: OrderEmailPayload)
                   <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
                     <thead>
                       <tr style="background-color: #f7ede3;">
-                        <th style="padding: 8px 12px; font-size: 12px; text-align: left; color: #521212; text-transform: uppercase;">Dish</th>
-                        <th style="padding: 8px 12px; font-size: 12px; text-align: center; color: #521212; text-transform: uppercase;">Qty</th>
-                        <th style="padding: 8px 12px; font-size: 12px; text-align: right; color: #521212; text-transform: uppercase;">Total</th>
+                        <th style="padding: 10px 12px; font-size: 12px; text-align: left; color: #521212; text-transform: uppercase;">Dish / Item</th>
+                        <th style="padding: 10px 12px; font-size: 12px; text-align: center; color: #521212; text-transform: uppercase;">Qty</th>
+                        <th style="padding: 10px 12px; font-size: 12px; text-align: right; color: #521212; text-transform: uppercase;">Total</th>
                       </tr>
                     </thead>
                     <tbody>${itemsHtml}</tbody>
+                  </table>
+                </td>
+              </tr>
+
+              <!-- Totals -->
+              <tr>
+                <td style="padding: 0 28px 24px 28px;">
+                  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-top: 2px solid #7B1D1D; padding-top: 12px;">
+                    <tr>
+                      <td style="font-size: 14px; color: #6b5c58; padding: 4px 0;">Subtotal:</td>
+                      <td style="font-size: 14px; color: #241512; font-weight: 600; text-align: right;">₹${Number(payload.subtotal).toFixed(2)}</td>
+                    </tr>
+                    ${
+                      payload.taxAmount && Number(payload.taxAmount) > 0
+                        ? `<tr>
+                      <td style="font-size: 14px; color: #6b5c58; padding: 4px 0;">Taxes (GST):</td>
+                      <td style="font-size: 14px; color: #241512; font-weight: 600; text-align: right;">₹${Number(payload.taxAmount).toFixed(2)}</td>
+                    </tr>`
+                        : ''
+                    }
+                    <tr>
+                      <td style="font-size: 16px; color: #7B1D1D; font-weight: 800; padding: 8px 0 0 0;">Total Payable:</td>
+                      <td style="font-size: 18px; color: #7B1D1D; font-weight: 800; text-align: right; padding: 8px 0 0 0;">₹${Number(payload.total).toFixed(2)}</td>
+                    </tr>
                   </table>
                 </td>
               </tr>
@@ -467,7 +537,7 @@ export async function sendOrderConfirmedByStaffEmail(payload: OrderEmailPayload)
     const info = await transporter.sendMail({
       from: `"Shree Kripa Restaurant" <${process.env.SMTP_USER}>`,
       to: payload.customerEmail,
-      subject: `Your Order is Confirmed #${payload.orderNumber} - Shree Kripa`,
+      subject: emailSubject,
       html,
     });
 

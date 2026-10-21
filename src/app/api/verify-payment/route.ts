@@ -191,12 +191,38 @@ export async function POST(request: Request) {
         },
       });
 
-      const customerEmail = fullOrder?.customer?.email;
+      let customerEmail =
+        fullOrder?.customer?.email?.trim() ||
+        fullOrder?.notes?.match(/\[Email:\s*([^\]]+)\]/i)?.[1]?.trim();
+
+      if (!customerEmail && fullOrder?.notes) {
+        const bookingRefMatch = fullOrder.notes.match(/#?(TB-[\w-]+)/i);
+        if (bookingRefMatch) {
+          const linkedBooking = await db.tableBooking.findUnique({
+            where: { bookingReference: bookingRefMatch[1] },
+            select: { customerEmail: true },
+          });
+          if (linkedBooking?.customerEmail) {
+            customerEmail = linkedBooking.customerEmail.trim();
+          }
+        }
+      }
+
+      if (!customerEmail && fullOrder?.customerPhone) {
+        const custByPhone = await db.customer.findUnique({
+          where: { phone: fullOrder.customerPhone.trim() },
+          select: { email: true },
+        });
+        if (custByPhone?.email) {
+          customerEmail = custByPhone.email.trim();
+        }
+      }
+
       if (customerEmail && fullOrder) {
         await sendOrderPaymentSuccessEmail({
           orderNumber: fullOrder.orderNumber,
           customerName: fullOrder.customerName || fullOrder.customer?.name || 'Valued Guest',
-          customerEmail,
+          customerEmail: customerEmail.toLowerCase(),
           customerPhone: fullOrder.customerPhone || fullOrder.customer?.phone,
           tableNumber: fullOrder.table?.tableNumber,
           items: fullOrder.orderItems.map((oi) => ({
